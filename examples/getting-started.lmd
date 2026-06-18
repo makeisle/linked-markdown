@@ -1,0 +1,58 @@
+---
+lmd: 1
+id: 0192f3a1-7c2e-7b3d-9f10-aa01example001
+version: 1
+title: Getting started with Linked Markdown
+---
+
+# Getting started <!--lmd:a intro-->
+
+Linked Markdown looks like ordinary Markdown. This paragraph is a linkable block
+named `intro`.
+
+## Anchors and links <!--lmd:a anchors-->
+
+You make a block linkable with an anchor comment, and you point at it with an
+address. For example, this sentence links back to [the introduction](:intro).
+<!--lmd:rel related=:intro-->
+
+## What the manifest is for <!--lmd:a manifest-->
+
+Run `lmd build` and a manifest appears below, recording a UUID for each anchor
+and the resolved edges. You never edit it by hand — it is regenerated on build.
+
+<!--lmd:manifest
+{
+  "schema": 1,
+  "body_hash": "sha256:e14c553b2e59fbf29d68ea9c4b1e9706eb2c1765aa3ece85ecd07702737861b9",
+  "nodes": {
+    "anchors": {
+      "uuid": "019ecef6-40d5-7690-b00f-c35d64b39f5a",
+      "kind": "heading",
+      "rev": 1,
+      "hash": "sha256:c3e7011998b8177e0b917bc1af05d43215592a602b2ec65e54e8e9598ee5d837"
+    },
+    "intro": {
+      "uuid": "019ecef6-40d5-7690-b00f-c342a303b9a3",
+      "kind": "heading",
+      "rev": 1,
+      "hash": "sha256:7b82d33bbaae3080573ae4feda845eeb22acfb6db5c913760c36ab61f6345db7"
+    },
+    "manifest": {
+      "uuid": "019ecef6-40d5-7690-b00f-c3628f87b480",
+      "kind": "heading",
+      "rev": 1,
+      "hash": "sha256:c5f9d8119b4d30d927e25362585f230ca80398ae9a0a8ed12ce5593025d36057"
+    }
+  },
+  "edges": [
+    {
+      "from": "anchors",
+      "rel": "related",
+      "to": ":intro",
+      "uuid": "019ecef6-40d5-7690-b00f-c342a303b9a3"
+    }
+  ],
+  "imports": {}
+}
+-->

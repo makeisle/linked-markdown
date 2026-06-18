@@ -1,0 +1,17 @@
+{
+  "name": "linked-markdown",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Linked Markdown (.lmd) — tooling monorepo",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "wasm": "wasm-pack build crates/lmd-wasm --target web --out-dir ../../packages/core/pkg"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.0"
+  }
+}

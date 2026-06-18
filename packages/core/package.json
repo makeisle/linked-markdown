@@ -1,0 +1,18 @@
+{
+  "name": "@lmd/core",
+  "version": "0.1.0",
+  "description": "TypeScript bindings for lmd-core (Linked Markdown), backed by WebAssembly.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "pkg"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test --import tsx test/*.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

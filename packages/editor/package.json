@@ -1,0 +1,37 @@
+{
+  "name": "@lmd/editor",
+  "version": "0.1.0",
+  "description": "ProseMirror / TipTap schema, React editor, and lmd-core round-trip for editing Linked Markdown.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test --import tsx test/*.test.ts"
+  },
+  "peerDependencies": {
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
+  },
+  "dependencies": {
+    "@lmd/core": "workspace:*",
+    "@tiptap/core": "^2.10.3",
+    "@tiptap/extension-link": "^2.10.3",
+    "@tiptap/pm": "^2.10.3",
+    "@tiptap/react": "^2.10.3",
+    "@tiptap/starter-kit": "^2.10.3",
+    "markdown-it": "^14.1.0",
+    "prosemirror-markdown": "^1.13.1",
+    "prosemirror-model": "^1.24.1"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/react": "^18.3.12",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

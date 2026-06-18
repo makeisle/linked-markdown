@@ -1,0 +1,21 @@
+[package]
+name = "lmd-wasm"
+description = "WebAssembly bindings for lmd-core, packaged as the @lmd/core npm module."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+lmd-core.workspace = true
+wasm-bindgen.workspace = true
+serde_json.workspace = true
+# Give uuid a JS randomness source when compiled to wasm32 (feature-unifies into
+# lmd-core's uuid in this build graph). Inert on native targets.
+uuid = { workspace = true, features = ["js"] }

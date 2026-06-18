@@ -1,0 +1,14 @@
+[package]
+name = "lmd-conformance"
+description = "Shared conformance fixtures and runner for Linked Markdown implementations."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+lmd-core.workspace = true
+
+[dev-dependencies]
+lmd-core.workspace = true

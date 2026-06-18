@@ -1,0 +1,10 @@
+---
+lmd: 1
+id: 0192f3a1-7c2e-7b3d-9f10-aa01diag00002
+version: 1
+title: Clean document
+---
+
+## Intro <!--lmd:a intro-->
+
+A self-contained block with a valid local link to [the intro](:intro).

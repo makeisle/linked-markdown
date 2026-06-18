@@ -1,0 +1,15 @@
+# Linked Markdown is an LF-only format: the canonical form and body hashes assume
+# LF newlines, so never let git rewrite line endings on checkout.
+* text=auto eol=lf
+
+*.lmd   text eol=lf
+*.rs    text eol=lf
+*.ts    text eol=lf
+*.json  text eol=lf
+*.toml  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.md    text eol=lf
+
+# Generated wasm artifacts are binary-ish; leave them alone.
+*.wasm  binary

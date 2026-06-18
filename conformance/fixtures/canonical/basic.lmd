@@ -1,0 +1,17 @@
+---
+lmd: 1
+id: 0192f3a1-7c2e-7b3d-9f10-aa01spec00001
+version: 1
+title: Conformance Basic
+imports:
+  design:
+    id: 0192f3a1-7c2e-7b3d-9f10-aa01design001
+    pin: '@7'
+---
+
+## Membership authentication <!--lmd:a cap-auth-->
+
+A member signs up and logs in through a trusted path.
+<!--lmd:rel impacts=design:uc-join-->
+
+Latency follows the [performance policy](design:perf@2)<!--lmd:ref rel=policy-->.
