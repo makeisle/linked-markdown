@@ -1,0 +1,57 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Linked Markdown",
+  "scopeName": "text.html.markdown.lmd",
+  "comment": "lmd escape comments highlighted on top of the standard Markdown grammar.",
+  "patterns": [
+    { "include": "#lmd-anchor" },
+    { "include": "#lmd-ref" },
+    { "include": "#lmd-rel" },
+    { "include": "#lmd-manifest" },
+    { "include": "text.html.markdown" }
+  ],
+  "repository": {
+    "lmd-anchor": {
+      "name": "meta.lmd.anchor",
+      "match": "(<!--)\\s*(lmd:a)\\s+([a-z][a-z0-9-]*)((?:\\s+rev=\\d+)?)\\s*(-->)",
+      "captures": {
+        "1": { "name": "punctuation.definition.comment.lmd" },
+        "2": { "name": "keyword.control.lmd.anchor" },
+        "3": { "name": "entity.name.tag.lmd.slug" },
+        "4": { "name": "constant.other.lmd.rev" },
+        "5": { "name": "punctuation.definition.comment.lmd" }
+      }
+    },
+    "lmd-ref": {
+      "name": "meta.lmd.ref",
+      "match": "(<!--)\\s*(lmd:ref)\\b([^>]*?)\\s*(-->)",
+      "captures": {
+        "1": { "name": "punctuation.definition.comment.lmd" },
+        "2": { "name": "keyword.control.lmd.ref" },
+        "3": { "name": "variable.parameter.lmd" },
+        "4": { "name": "punctuation.definition.comment.lmd" }
+      }
+    },
+    "lmd-rel": {
+      "name": "meta.lmd.rel",
+      "match": "(<!--)\\s*(lmd:rel)\\s+([^>]*?)\\s*(-->)",
+      "captures": {
+        "1": { "name": "punctuation.definition.comment.lmd" },
+        "2": { "name": "keyword.control.lmd.rel" },
+        "3": { "name": "variable.parameter.lmd" },
+        "4": { "name": "punctuation.definition.comment.lmd" }
+      }
+    },
+    "lmd-manifest": {
+      "name": "meta.lmd.manifest",
+      "begin": "(<!--)\\s*(lmd:manifest)",
+      "end": "(-->)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.comment.lmd" },
+        "2": { "name": "keyword.control.lmd.manifest" }
+      },
+      "endCaptures": { "1": { "name": "punctuation.definition.comment.lmd" } },
+      "patterns": [{ "include": "source.json" }]
+    }
+  }
+}

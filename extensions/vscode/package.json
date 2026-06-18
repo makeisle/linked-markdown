@@ -1,0 +1,42 @@
+{
+  "name": "lmd-vscode",
+  "displayName": "Linked Markdown",
+  "description": "Syntax highlighting and language server for Linked Markdown (.lmd).",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "publisher": "makeisle",
+  "private": true,
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages"],
+  "main": "./dist/extension.js",
+  "activationEvents": ["onLanguage:lmd"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "lmd",
+        "aliases": ["Linked Markdown", "lmd"],
+        "extensions": [".lmd"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "lmd",
+        "scopeName": "text.html.markdown.lmd",
+        "path": "./syntaxes/lmd.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@lmd/lsp": "workspace:*",
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.6.0"
+  }
+}

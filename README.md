@@ -32,11 +32,14 @@ crates/
   lmd-wasm/     wasm-bindgen bindings that expose lmd-core to JavaScript.
 packages/
   @lmd/core     Thin TypeScript wrapper around the wasm bindings (browser + node).
-  @lmd/editor   TipTap / ProseMirror WYSIWYG editor for .lmd.
-  @lmd/viewer   Renderer with link-graph overlay (popovers, backlinks).
+  @lmd/editor   TipTap / ProseMirror WYSIWYG editor for .lmd (React, chip node views).
+  @lmd/viewer   Renderer with link-graph overlay (refs, backlinks).
+  @lmd/lsp      Language server: diagnostics, completion, definition, references, symbols.
 apps/
   playground    Live editor + viewer demo.
   docs          Documentation site (spec, syntax guide, tutorials).
+extensions/
+  vscode        VS Code extension: .lmd grammar + language-server client.
 skill/          A Claude skill for authoring .lmd documents.
 conformance/    Golden fixtures + runner. The authority for "is this a valid
                 lmd implementation?" — shared by every implementation.
