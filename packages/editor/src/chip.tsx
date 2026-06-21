@@ -9,7 +9,7 @@ import * as React from "react";
 
 /** Turn a raw lmd comment into a short, human label. */
 export function describeComment(raw: string): { icon: string; label: string; kind: string } {
-  const anchor = raw.match(/<!--lmd:a\s+([a-z0-9-]+)/);
+  const anchor = raw.match(/<!--lmd:a\s+([a-z][a-z0-9-]*)(?:\s+rev=\d+)?\s*-->/);
   if (anchor) return { icon: "⚓", label: anchor[1], kind: "anchor" };
 
   const ref = raw.match(/<!--lmd:ref\b([^>]*)-->/);
