@@ -61,65 +61,104 @@ export function App() {
 
   const rendered = useMemo(() => (doc ? renderToHtml(doc) : null), [doc]);
   const errors = diags.filter((d) => d.severity === "error");
+  const nodeCount = doc?.manifest ? Object.keys(doc.manifest.nodes).length : 0;
+  const edgeCount = doc?.manifest ? doc.manifest.edges.length : 0;
 
   return (
     <div className="app">
-      <header className="app__head">
-        <h1>Linked Markdown</h1>
-        <span className="app__sub">live editor · Rust/wasm core · graph-aware viewer</span>
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand__mark" aria-hidden>
+            ⬡
+          </span>
+          <span className="brand__name">Linked Markdown</span>
+          <span className="brand__tag">playground</span>
+        </div>
+        <div className="stats">
+          <span className="stat">
+            <b>{nodeCount}</b> nodes
+          </span>
+          <span className="stat">
+            <b>{edgeCount}</b> edges
+          </span>
+          <span className={`pill ${errors.length ? "pill--bad" : "pill--ok"}`}>
+            {errors.length ? `${errors.length} error${errors.length > 1 ? "s" : ""}` : "valid"}
+          </span>
+        </div>
       </header>
 
       <main className="panes">
         <section className="pane">
-          <h2 className="pane__title">Editor</h2>
-          <LmdEditor value={INITIAL_BODY} onChange={setBody} />
+          <div className="pane__head">
+            <span className="pane__title">Editor</span>
+            <span className="pane__hint">WYSIWYG · escape comments as chips</span>
+          </div>
+          <div className="pane__body">
+            <LmdEditor value={INITIAL_BODY} onChange={setBody} />
+          </div>
         </section>
 
         <section className="pane">
-          <h2 className="pane__title">Rendered</h2>
-          {rendered ? (
-            // The viewer output is sanitized markdown-it HTML for our own content.
-            <div className="rendered" dangerouslySetInnerHTML={{ __html: rendered.html }} />
-          ) : (
-            <p className="muted">{ready ? "Building…" : "Loading core…"}</p>
-          )}
-          {rendered && Object.keys(rendered.backlinks).length > 0 && (
-            <div className="backlinks">
-              <h3>Backlinks</h3>
-              <ul>
-                {Object.entries(rendered.backlinks).map(([slug, links]) => (
-                  <li key={slug}>
-                    <code>:{slug}</code> ←{" "}
-                    {links.map((l, i) => (
-                      <span key={i} className="tag">
-                        {l.from} <em>{l.rel}</em>
-                      </span>
-                    ))}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
-
-        <section className="pane">
-          <h2 className="pane__title">Diagnostics & manifest</h2>
-          <div className={`diags${errors.length ? " has-errors" : ""}`}>
-            {diags.length === 0 ? (
-              <p className="ok">✓ no problems</p>
+          <div className="pane__head">
+            <span className="pane__title">Rendered</span>
+            <span className="pane__hint">clean Markdown + link graph</span>
+          </div>
+          <div className="pane__body">
+            {rendered ? (
+              <article className="rendered" dangerouslySetInnerHTML={{ __html: rendered.html }} />
             ) : (
-              <ul>
-                {diags.map((d, i) => (
-                  <li key={i} className={`diag diag--${d.severity}`}>
-                    <strong>{d.severity}</strong> <code>{d.code}</code> {d.message}
-                  </li>
-                ))}
-              </ul>
+              <p className="muted">{ready ? "Building…" : "Loading core…"}</p>
+            )}
+            {rendered && Object.keys(rendered.backlinks).length > 0 && (
+              <div className="backlinks">
+                <h3>Backlinks</h3>
+                <ul>
+                  {Object.entries(rendered.backlinks).map(([slug, links]) => (
+                    <li key={slug}>
+                      <code>:{slug}</code>
+                      <span className="backlinks__arrow">←</span>
+                      {links.map((l, i) => (
+                        <span key={i} className="tag">
+                          {l.from}
+                          <em>{l.rel}</em>
+                        </span>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
-          {doc?.manifest && (
-            <pre className="manifest">{JSON.stringify(doc.manifest, null, 2)}</pre>
-          )}
+        </section>
+
+        <section className="pane pane--aside">
+          <div className="pane__head">
+            <span className="pane__title">Diagnostics</span>
+            <span className="pane__hint">manifest is machine-managed</span>
+          </div>
+          <div className="pane__body">
+            <div className={`diags${errors.length ? " has-errors" : ""}`}>
+              {diags.length === 0 ? (
+                <p className="ok">✓ no problems</p>
+              ) : (
+                <ul>
+                  {diags.map((d, i) => (
+                    <li key={i} className={`diag diag--${d.severity}`}>
+                      <span className="diag__dot" />
+                      <code>{d.code}</code>
+                      <span className="diag__msg">{d.message}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {doc?.manifest && (
+              <details className="manifest" open>
+                <summary>manifest.json</summary>
+                <pre>{JSON.stringify(doc.manifest, null, 2)}</pre>
+              </details>
+            )}
+          </div>
         </section>
       </main>
     </div>
