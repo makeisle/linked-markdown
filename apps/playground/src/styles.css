@@ -54,13 +54,34 @@ body {
 /* Editor */
 .lmd-editor { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .lmd-tb {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 6px;
   background: #12151c;
   border-bottom: 1px solid var(--border);
 }
+.lmd-tb__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+}
+.lmd-tb__prompt {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  background: #0f1218;
+}
+.lmd-tb__input {
+  flex: 1;
+  background: #11141b;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  outline: none;
+}
+.lmd-tb__input:focus { border-color: var(--accent); }
 .lmd-tb__btn {
   background: transparent;
   color: var(--text);
