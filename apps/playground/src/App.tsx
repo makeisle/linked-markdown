@@ -1,7 +1,7 @@
 import * as core from "@lmd/core";
 import { renderToHtml } from "@lmd/viewer";
 import * as React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import wasmUrl from "@lmd/core/pkg/lmd_wasm_bg.wasm?url";
 import { DEMO } from "./demo.js";
 import { SectionEditor } from "./SectionEditor.js";
@@ -40,7 +40,18 @@ function preview(md: string): string {
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/[#>*_`]/g, "")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .slice(0, 160);
+}
+
+function focusAnchor(root: HTMLElement | null, slug: string, highlight: boolean) {
+  if (!root) return;
+  if (highlight) root.querySelectorAll(".lmd-focus").forEach((e) => e.classList.remove("lmd-focus"));
+  const el = root.querySelector(`[data-lmd-anchor="${slug}"]`);
+  if (!el) return;
+  const block = (el.closest("h1,h2,h3,h4,h5,h6,p,li") as HTMLElement) ?? (el as HTMLElement);
+  if (highlight) block.classList.add("lmd-focus");
+  block.scrollIntoView({ behavior: highlight ? "smooth" : "auto", block: "center" });
 }
 
 export function App() {
@@ -50,13 +61,16 @@ export function App() {
   const [history, setHistory] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
 
+  const centerRef = useRef<HTMLDivElement>(null);
+  const prevRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     core.init(wasmUrl).then(() => setReady(true)).catch((e) => setError(String(e)));
   }, []);
 
   const sections = useMemo(() => splitSections(body), [body]);
   const bySlug = useMemo(() => new Map(sections.map((s) => [s.slug, s])), [sections]);
-  const htmlCache = useMemo(() => new Map<string, string>(), [body]);
+  const docHtml = useMemo(() => renderToHtml({ frontmatter: FM, body }).html, [body]);
 
   const [outgoing, setOutgoing] = useState<Map<string, { slug: string; rel: string }[]>>(new Map());
   useEffect(() => {
@@ -84,7 +98,6 @@ export function App() {
     };
   }, [ready, body, bySlug]);
 
-  // Initialize / repair the history when sections change.
   useEffect(() => {
     if (!sections.length) return;
     setHistory((h) => {
@@ -93,14 +106,18 @@ export function App() {
     });
   }, [sections, bySlug]);
 
-  function html(slug: string): string {
-    const cached = htmlCache.get(slug);
-    if (cached !== undefined) return cached;
-    const sec = bySlug.get(slug);
-    const out = sec ? renderToHtml({ frontmatter: FM, body: sec.md }).html : "";
-    htmlCache.set(slug, out);
-    return out;
-  }
+  const currentSlug = history[history.length - 1];
+  const prevSlug = history.length > 1 ? history[history.length - 2] : null;
+
+  // Focus (scroll + highlight) the current anchor in the center; scroll the left
+  // pane to the previous anchor.
+  useEffect(() => {
+    if (editing || !currentSlug) return;
+    focusAnchor(centerRef.current, currentSlug, true);
+  }, [currentSlug, docHtml, editing, outgoing]);
+  useEffect(() => {
+    if (prevSlug) focusAnchor(prevRef.current, prevSlug, false);
+  }, [prevSlug, docHtml, outgoing]);
 
   const navigate = (slug: string) => bySlug.has(slug) && setHistory((h) => [...h, slug]);
   const back = () => setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h));
@@ -113,18 +130,14 @@ export function App() {
     if (addr.kind === "local") navigate(addr.slug);
   }
 
-  function saveEdit(newMd: string) {
-    const current = bySlug.get(history[history.length - 1]);
-    if (current) setBody((b) => b.replace(current.md, newMd));
+  function saveEdit(newBody: string) {
+    setBody(newBody);
     setEditing(false);
   }
 
   if (error) return <div className="fatal">⚠ {error}</div>;
-  if (!ready || history.length === 0) return <div className="loading">Loading…</div>;
+  if (!ready || !currentSlug) return <div className="loading">Loading…</div>;
 
-  const currentSlug = history[history.length - 1];
-  const prevSlug = history.length > 1 ? history[history.length - 2] : null;
-  const current = bySlug.get(currentSlug)!;
   const links = outgoing.get(currentSlug) ?? [];
 
   return (
@@ -151,11 +164,12 @@ export function App() {
         <section className="col col--prev">
           <div className="col__label">Previous</div>
           {prevSlug ? (
-            <button className="doc doc--ghost" onClick={back} title="Go back" disabled={editing}>
-              <div className="doc__title">{bySlug.get(prevSlug)!.title}</div>
-              <div className="doc__body" dangerouslySetInnerHTML={{ __html: html(prevSlug) }} />
-              <div className="doc__hint">← back</div>
-            </button>
+            <div className="doc doc--ghost" title="Go back" onClick={back}>
+              <div className="doc__body" ref={prevRef} dangerouslySetInnerHTML={{ __html: docHtml }} />
+              <div className="doc__badge">
+                {bySlug.get(prevSlug)!.title} · ← back
+              </div>
+            </div>
           ) : (
             <div className="col__empty">You are at the start.</div>
           )}
@@ -168,7 +182,8 @@ export function App() {
                 ←
               </button>
             )}
-            {editing ? "Editing" : "Reading"}
+            {editing ? "Editing" : "Focused on"}
+            {!editing && <span className="focustag">{bySlug.get(currentSlug)?.title}</span>}
             {!editing && (
               <button className="editbtn" onClick={() => setEditing(true)}>
                 ✎ Edit
@@ -177,24 +192,25 @@ export function App() {
           </div>
           {editing ? (
             <SectionEditor
-              initial={current.md}
+              initial={body}
               anchors={sections.map((s) => ({ slug: s.slug, title: s.title }))}
               onSave={saveEdit}
               onCancel={() => setEditing(false)}
             />
           ) : (
             <article className="doc doc--current" onClick={onCenterClick}>
-              <div className="doc__body" dangerouslySetInnerHTML={{ __html: html(currentSlug) }} />
+              <div className="doc__body" ref={centerRef} dangerouslySetInnerHTML={{ __html: docHtml }} />
             </article>
           )}
         </section>
 
         <section className="col col--links">
           <div className="col__label">
-            Links out <span className="count">{links.length}</span>
+            Links from <span className="focustag">{bySlug.get(currentSlug)?.title}</span>
+            <span className="count">{links.length}</span>
           </div>
           {links.length === 0 ? (
-            <div className="col__empty">This section has no outgoing links.</div>
+            <div className="col__empty">This section links nowhere.</div>
           ) : (
             <ul className="cards">
               {links.map(({ slug, rel }) => {
@@ -207,7 +223,7 @@ export function App() {
                         <span className="card__rel">{rel}</span>
                       </div>
                       <div className="card__preview">{preview(sec.md)}</div>
-                      <div className="card__go">open →</div>
+                      <div className="card__go">focus →</div>
                     </button>
                   </li>
                 );
