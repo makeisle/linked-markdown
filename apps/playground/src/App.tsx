@@ -15,6 +15,7 @@ interface Section {
 const ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/;
 const ANCHOR_G = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/g;
 const FM: core.Frontmatter = { lmd: 1, id: "demo", version: 1, title: "Demo" };
+const PALETTE = 4;
 
 function splitSections(body: string): Section[] {
   const lines = body.split("\n");
@@ -41,28 +42,27 @@ function preview(md: string): string {
     .replace(/[#>*_`]/g, "")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 160);
+    .slice(0, 150);
 }
 
-function focusAnchor(root: HTMLElement | null, slug: string, highlight: boolean) {
-  if (!root) return;
-  if (highlight) root.querySelectorAll(".lmd-focus").forEach((e) => e.classList.remove("lmd-focus"));
-  const el = root.querySelector(`[data-lmd-anchor="${slug}"]`);
-  if (!el) return;
-  const block = (el.closest("h1,h2,h3,h4,h5,h6,p,li") as HTMLElement) ?? (el as HTMLElement);
-  if (highlight) block.classList.add("lmd-focus");
-  block.scrollIntoView({ behavior: highlight ? "smooth" : "auto", block: "center" });
-}
+const blockOf = (el: Element) => (el.closest("h1,h2,h3,h4,h5,h6,p,li") as HTMLElement) ?? (el as HTMLElement);
 
 export function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState(DEMO);
-  const [history, setHistory] = useState<string[]>([]);
+  const [focusSlug, setFocusSlug] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
+  const centerScroll = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
-  const prevRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef(new Map<string, HTMLButtonElement | null>());
+
+  const focusRef = useRef<string | null>(null);
+  const sectionsRef = useRef<Section[]>([]);
+  const outgoingRef = useRef(new Map<string, { slug: string; rel: string }[]>());
+  const colorRef = useRef(new Map<string, number>());
 
   useEffect(() => {
     core.init(wasmUrl).then(() => setReady(true)).catch((e) => setError(String(e)));
@@ -71,8 +71,17 @@ export function App() {
   const sections = useMemo(() => splitSections(body), [body]);
   const bySlug = useMemo(() => new Map(sections.map((s) => [s.slug, s])), [sections]);
   const docHtml = useMemo(() => renderToHtml({ frontmatter: FM, body }).html, [body]);
+  const colorOf = useMemo(() => {
+    const m = new Map<string, number>();
+    sections.forEach((s, i) => m.set(s.slug, i % PALETTE));
+    return m;
+  }, [sections]);
 
   const [outgoing, setOutgoing] = useState<Map<string, { slug: string; rel: string }[]>>(new Map());
+  sectionsRef.current = sections;
+  outgoingRef.current = outgoing;
+  colorRef.current = colorOf;
+
   useEffect(() => {
     if (!ready) return;
     let cancelled = false;
@@ -98,50 +107,157 @@ export function App() {
     };
   }, [ready, body, bySlug]);
 
+  // Colour every link in the document by its target's stable palette index.
   useEffect(() => {
-    if (!sections.length) return;
-    setHistory((h) => {
-      const kept = h.filter((s) => bySlug.has(s));
-      return kept.length ? kept : [sections[0].slug];
+    const root = centerRef.current;
+    if (!root) return;
+    root.querySelectorAll<HTMLAnchorElement>("a.lmd-ref").forEach((a) => {
+      const t = core.parseAddress(a.dataset.lmdTarget ?? "");
+      if (t.kind === "local" && colorOf.has(t.slug)) {
+        a.classList.add(`lc-${colorOf.get(t.slug)}`);
+      }
     });
-  }, [sections, bySlug]);
+  }, [ready, docHtml, colorOf, editing]);
 
-  const currentSlug = history[history.length - 1];
-  const prevSlug = history.length > 1 ? history[history.length - 2] : null;
+  const lineY = () => {
+    const r = centerScroll.current!.getBoundingClientRect();
+    return r.top + r.height / 2;
+  };
 
-  // Focus (scroll + highlight) the current anchor in the center; scroll the left
-  // pane to the previous anchor.
+  const nearestLink = (slug: string, y: number): HTMLElement | null => {
+    let best: HTMLElement | null = null;
+    let bd = Infinity;
+    centerRef.current?.querySelectorAll<HTMLElement>(`a.lmd-ref[data-lmd-target=":${slug}"]`).forEach((e) => {
+      const r = e.getBoundingClientRect();
+      const d = Math.abs(r.top + r.height / 2 - y);
+      if (d < bd) {
+        bd = d;
+        best = e;
+      }
+    });
+    return best;
+  };
+
+  const layoutCards = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !centerScroll.current) return;
+    const cRect = canvas.getBoundingClientRect();
+    const y0 = lineY();
+    const links = outgoingRef.current.get(focusRef.current ?? "") ?? [];
+    const items = links
+      .map(({ slug }) => {
+        const src = nearestLink(slug, y0);
+        const el = cardRefs.current.get(slug);
+        const h = el?.offsetHeight ?? 66;
+        let srcY = cRect.height / 2;
+        if (src) {
+          const r = src.getBoundingClientRect();
+          srcY = r.top + r.height / 2 - cRect.top;
+        }
+        return { slug, srcY, h, el };
+      })
+      .sort((a, b) => a.srcY - b.srcY);
+
+    const gap = 12;
+    let prevBottom = -1e9;
+    for (const it of items) {
+      let top = it.srcY - it.h / 2;
+      if (top < prevBottom + gap) top = prevBottom + gap;
+      top = Math.max(6, Math.min(top, cRect.height - it.h - 6));
+      prevBottom = top + it.h;
+      const center = top + it.h / 2;
+      const dir = it.srcY < center - 6 ? "up" : it.srcY > center + 6 ? "down" : "mid";
+      if (it.el) {
+        it.el.style.top = `${top}px`;
+        it.el.dataset.dir = dir;
+      }
+    }
+  };
+
+  const computeFocus = () => {
+    const root = centerRef.current;
+    if (!root || !centerScroll.current) return;
+    const y0 = lineY();
+    let best: string | null = null;
+    let bd = Infinity;
+    let bestBlock: HTMLElement | null = null;
+    for (const s of sectionsRef.current) {
+      const el = root.querySelector(`[data-lmd-anchor="${s.slug}"]`);
+      if (!el) continue;
+      const block = blockOf(el);
+      const r = block.getBoundingClientRect();
+      const d = Math.abs(r.top + r.height / 2 - y0);
+      if (d < bd) {
+        bd = d;
+        best = s.slug;
+        bestBlock = block;
+      }
+    }
+    if (best && bestBlock) {
+      root.querySelectorAll(".lmd-focus").forEach((e) => e.classList.remove("lmd-focus"));
+      bestBlock.classList.add("lmd-focus");
+      if (best !== focusRef.current) {
+        focusRef.current = best;
+        setFocusSlug(best);
+      }
+    }
+  };
+
+  // Scroll listener: recompute focus + reposition cards as the reader scrolls.
   useEffect(() => {
-    if (editing || !currentSlug) return;
-    focusAnchor(centerRef.current, currentSlug, true);
-  }, [currentSlug, docHtml, editing, outgoing]);
-  useEffect(() => {
-    if (prevSlug) focusAnchor(prevRef.current, prevSlug, false);
-  }, [prevSlug, docHtml, outgoing]);
+    const sc = centerScroll.current;
+    if (!sc || editing) return;
+    const onScroll = () => {
+      computeFocus();
+      layoutCards();
+    };
+    sc.addEventListener("scroll", onScroll, { passive: true });
+    return () => sc.removeEventListener("scroll", onScroll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, editing, docHtml]);
 
-  const navigate = (slug: string) => bySlug.has(slug) && setHistory((h) => [...h, slug]);
-  const back = () => setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h));
+  // Center the first anchor once loaded, then let scroll drive focus.
+  useEffect(() => {
+    if (!ready || editing || !sections.length) return;
+    const t = setTimeout(() => {
+      if (!focusRef.current) {
+        const el = centerRef.current?.querySelector(`[data-lmd-anchor="${sections[0].slug}"]`);
+        if (el) blockOf(el).scrollIntoView({ block: "center" });
+      }
+      computeFocus();
+      layoutCards();
+    }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, docHtml, editing, outgoing]);
+
+  // Reposition cards whenever the card set changes.
+  useEffect(() => {
+    layoutCards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusSlug, outgoing]);
+
+  function focusOn(slug: string) {
+    const el = centerRef.current?.querySelector(`[data-lmd-anchor="${slug}"]`);
+    if (el) blockOf(el).scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 
   function onCenterClick(e: React.MouseEvent) {
     const a = (e.target as HTMLElement).closest("a.lmd-ref") as HTMLAnchorElement | null;
     if (!a) return;
     e.preventDefault();
     const addr = core.parseAddress(a.dataset.lmdTarget ?? "");
-    if (addr.kind === "local") navigate(addr.slug);
-  }
-
-  function saveEdit(newBody: string) {
-    setBody(newBody);
-    setEditing(false);
+    if (addr.kind === "local") focusOn(addr.slug);
   }
 
   if (error) return <div className="fatal">⚠ {error}</div>;
-  if (!ready || !currentSlug) return <div className="loading">Loading…</div>;
+  if (!ready) return <div className="loading">Loading…</div>;
 
-  const links = outgoing.get(currentSlug) ?? [];
+  const current = focusSlug ? bySlug.get(focusSlug) : sections[0];
+  const links = focusSlug ? outgoing.get(focusSlug) ?? [] : [];
 
   return (
-    <div className="reader">
+    <div className="reader reader--2col">
       <header className="reader__bar">
         <div className="brand">
           <span className="brand__mark" aria-hidden>
@@ -150,40 +266,15 @@ export function App() {
           <span className="brand__name">Linked Markdown</span>
           <span className="brand__tag">reader</span>
         </div>
-        <nav className="crumbs">
-          {history.map((slug, i) => (
-            <span key={i} className="crumbs__item">
-              {i > 0 && <span className="crumbs__sep">›</span>}
-              <span className={i === history.length - 1 ? "is-current" : ""}>{bySlug.get(slug)?.title ?? slug}</span>
-            </span>
-          ))}
-        </nav>
+        <div className="focusnow">
+          Focused on <span className="focustag">{current?.title}</span>
+        </div>
       </header>
 
-      <main className="cols">
-        <section className="col col--prev">
-          <div className="col__label">Previous</div>
-          {prevSlug ? (
-            <div className="doc doc--ghost" title="Go back" onClick={back}>
-              <div className="doc__body" ref={prevRef} dangerouslySetInnerHTML={{ __html: docHtml }} />
-              <div className="doc__badge">
-                {bySlug.get(prevSlug)!.title} · ← back
-              </div>
-            </div>
-          ) : (
-            <div className="col__empty">You are at the start.</div>
-          )}
-        </section>
-
+      <main className="cols cols--2">
         <section className="col col--current">
           <div className="col__label">
-            {prevSlug && !editing && (
-              <button className="backbtn" onClick={back} title="Back">
-                ←
-              </button>
-            )}
-            {editing ? "Editing" : "Focused on"}
-            {!editing && <span className="focustag">{bySlug.get(currentSlug)?.title}</span>}
+            Document
             {!editing && (
               <button className="editbtn" onClick={() => setEditing(true)}>
                 ✎ Edit
@@ -194,42 +285,48 @@ export function App() {
             <SectionEditor
               initial={body}
               anchors={sections.map((s) => ({ slug: s.slug, title: s.title }))}
-              onSave={saveEdit}
+              onSave={(b) => {
+                setBody(b);
+                setEditing(false);
+              }}
               onCancel={() => setEditing(false)}
             />
           ) : (
-            <article className="doc doc--current" onClick={onCenterClick}>
-              <div className="doc__body" ref={centerRef} dangerouslySetInnerHTML={{ __html: docHtml }} />
-            </article>
+            <div className="doc doc--current" ref={centerScroll}>
+              <div className="focusline" aria-hidden />
+              <article className="doc__body" ref={centerRef} onClick={onCenterClick} dangerouslySetInnerHTML={{ __html: docHtml }} />
+            </div>
           )}
         </section>
 
         <section className="col col--links">
           <div className="col__label">
-            Links from <span className="focustag">{bySlug.get(currentSlug)?.title}</span>
+            Links from <span className="focustag">{current?.title}</span>
             <span className="count">{links.length}</span>
           </div>
-          {links.length === 0 ? (
-            <div className="col__empty">This section links nowhere.</div>
-          ) : (
-            <ul className="cards">
-              {links.map(({ slug, rel }) => {
-                const sec = bySlug.get(slug)!;
-                return (
-                  <li key={slug}>
-                    <button className="card" onClick={() => navigate(slug)} disabled={editing}>
-                      <div className="card__head">
-                        <span className="card__title">{sec.title}</span>
-                        <span className="card__rel">{rel}</span>
-                      </div>
-                      <div className="card__preview">{preview(sec.md)}</div>
-                      <div className="card__go">focus →</div>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <div className="cards-canvas" ref={canvasRef}>
+            {links.length === 0 && <div className="col__empty">This section links nowhere.</div>}
+            {links.map(({ slug, rel }) => {
+              const sec = bySlug.get(slug)!;
+              const ci = colorOf.get(slug) ?? 0;
+              return (
+                <button
+                  key={slug}
+                  ref={(el) => cardRefs.current.set(slug, el)}
+                  className={`card lc-${ci}`}
+                  data-dir="mid"
+                  onClick={() => focusOn(slug)}
+                >
+                  <span className="needle" aria-hidden />
+                  <div className="card__head">
+                    <span className="card__title">{sec.title}</span>
+                    <span className="card__rel">{rel}</span>
+                  </div>
+                  <div className="card__preview">{preview(sec.md)}</div>
+                </button>
+              );
+            })}
+          </div>
         </section>
       </main>
     </div>
