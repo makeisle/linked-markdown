@@ -1,9 +1,10 @@
 import * as core from "@lmd/core";
 import { renderToHtml } from "@lmd/viewer";
 import * as React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import wasmUrl from "@lmd/core/pkg/lmd_wasm_bg.wasm?url";
 import { DEMO } from "./demo.js";
+import { SectionEditor } from "./SectionEditor.js";
 
 interface Section {
   slug: string;
@@ -13,7 +14,6 @@ interface Section {
 
 const ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/;
 const ANCHOR_G = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/g;
-
 const FM: core.Frontmatter = { lmd: 1, id: "demo", version: 1, title: "Demo" };
 
 function splitSections(body: string): Section[] {
@@ -26,10 +26,7 @@ function splitSections(body: string): Section[] {
   return marks.map((mk, idx) => {
     const end = idx + 1 < marks.length ? marks[idx + 1].line : lines.length;
     const md = lines.slice(mk.line, end).join("\n").trim();
-    const title = lines[mk.line]
-      .replace(ANCHOR_G, "")
-      .replace(/^#+\s*/, "")
-      .trim();
+    const title = lines[mk.line].replace(ANCHOR_G, "").replace(/^#+\s*/, "").trim();
     return { slug: mk.slug, title, md };
   });
 }
@@ -37,7 +34,7 @@ function splitSections(body: string): Section[] {
 function preview(md: string): string {
   return md
     .split("\n")
-    .slice(1) // drop the heading line
+    .slice(1)
     .join(" ")
     .replace(/<!--[^>]*-->/g, "")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
@@ -49,26 +46,26 @@ function preview(md: string): string {
 export function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [body, setBody] = useState(DEMO);
   const [history, setHistory] = useState<string[]>([]);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
-    core
-      .init(wasmUrl)
-      .then(() => setReady(true))
-      .catch((e) => setError(String(e)));
+    core.init(wasmUrl).then(() => setReady(true)).catch((e) => setError(String(e)));
   }, []);
 
-  const sections = useMemo(() => splitSections(DEMO), []);
+  const sections = useMemo(() => splitSections(body), [body]);
   const bySlug = useMemo(() => new Map(sections.map((s) => [s.slug, s])), [sections]);
+  const htmlCache = useMemo(() => new Map<string, string>(), [body]);
 
-  // Outgoing local links per section, resolved from the built manifest.
   const [outgoing, setOutgoing] = useState<Map<string, { slug: string; rel: string }[]>>(new Map());
   useEffect(() => {
     if (!ready) return;
+    let cancelled = false;
     (async () => {
       try {
-        const src = `---\nlmd: 1\nid: demo\nversion: 1\ntitle: Demo\n---\n\n${DEMO}\n`;
-        const doc = await core.build(src);
+        const doc = await core.build(`---\nlmd: 1\nid: demo\nversion: 1\ntitle: Demo\n---\n\n${body}\n`);
+        if (cancelled) return;
         const map = new Map<string, { slug: string; rel: string }[]>();
         for (const e of doc.manifest?.edges ?? []) {
           const addr = core.parseAddress(e.to);
@@ -79,40 +76,47 @@ export function App() {
         }
         setOutgoing(map);
       } catch (e) {
-        setError(String(e));
+        if (!cancelled) setError(String(e));
       }
     })();
-  }, [ready, bySlug]);
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, body, bySlug]);
 
+  // Initialize / repair the history when sections change.
   useEffect(() => {
-    if (sections.length && history.length === 0) setHistory([sections[0].slug]);
-  }, [sections, history.length]);
+    if (!sections.length) return;
+    setHistory((h) => {
+      const kept = h.filter((s) => bySlug.has(s));
+      return kept.length ? kept : [sections[0].slug];
+    });
+  }, [sections, bySlug]);
 
-  const htmlCache = useRef(new Map<string, string>());
   function html(slug: string): string {
-    const cached = htmlCache.current.get(slug);
-    if (cached) return cached;
+    const cached = htmlCache.get(slug);
+    if (cached !== undefined) return cached;
     const sec = bySlug.get(slug);
     const out = sec ? renderToHtml({ frontmatter: FM, body: sec.md }).html : "";
-    htmlCache.current.set(slug, out);
+    htmlCache.set(slug, out);
     return out;
   }
 
-  function navigate(slug: string) {
-    if (!bySlug.has(slug)) return;
-    setHistory((h) => [...h, slug]);
-  }
-  function back() {
-    setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h));
-  }
+  const navigate = (slug: string) => bySlug.has(slug) && setHistory((h) => [...h, slug]);
+  const back = () => setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h));
 
-  // Intercept clicks on inline lmd links in the center pane → navigate.
   function onCenterClick(e: React.MouseEvent) {
     const a = (e.target as HTMLElement).closest("a.lmd-ref") as HTMLAnchorElement | null;
     if (!a) return;
     e.preventDefault();
     const addr = core.parseAddress(a.dataset.lmdTarget ?? "");
     if (addr.kind === "local") navigate(addr.slug);
+  }
+
+  function saveEdit(newMd: string) {
+    const current = bySlug.get(history[history.length - 1]);
+    if (current) setBody((b) => b.replace(current.md, newMd));
+    setEditing(false);
   }
 
   if (error) return <div className="fatal">⚠ {error}</div>;
@@ -137,20 +141,17 @@ export function App() {
           {history.map((slug, i) => (
             <span key={i} className="crumbs__item">
               {i > 0 && <span className="crumbs__sep">›</span>}
-              <span className={i === history.length - 1 ? "is-current" : ""}>
-                {bySlug.get(slug)?.title ?? slug}
-              </span>
+              <span className={i === history.length - 1 ? "is-current" : ""}>{bySlug.get(slug)?.title ?? slug}</span>
             </span>
           ))}
         </nav>
       </header>
 
       <main className="cols">
-        {/* LEFT — previous screen (history) */}
         <section className="col col--prev">
           <div className="col__label">Previous</div>
           {prevSlug ? (
-            <button className="doc doc--ghost" onClick={back} title="Go back">
+            <button className="doc doc--ghost" onClick={back} title="Go back" disabled={editing}>
               <div className="doc__title">{bySlug.get(prevSlug)!.title}</div>
               <div className="doc__body" dangerouslySetInnerHTML={{ __html: html(prevSlug) }} />
               <div className="doc__hint">← back</div>
@@ -160,22 +161,34 @@ export function App() {
           )}
         </section>
 
-        {/* CENTER — current screen */}
         <section className="col col--current">
           <div className="col__label">
-            {prevSlug && (
+            {prevSlug && !editing && (
               <button className="backbtn" onClick={back} title="Back">
                 ←
               </button>
             )}
-            Reading
+            {editing ? "Editing" : "Reading"}
+            {!editing && (
+              <button className="editbtn" onClick={() => setEditing(true)}>
+                ✎ Edit
+              </button>
+            )}
           </div>
-          <article className="doc doc--current" onClick={onCenterClick}>
-            <div className="doc__body" dangerouslySetInnerHTML={{ __html: html(currentSlug) }} />
-          </article>
+          {editing ? (
+            <SectionEditor
+              initial={current.md}
+              anchors={sections.map((s) => ({ slug: s.slug, title: s.title }))}
+              onSave={saveEdit}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (
+            <article className="doc doc--current" onClick={onCenterClick}>
+              <div className="doc__body" dangerouslySetInnerHTML={{ __html: html(currentSlug) }} />
+            </article>
+          )}
         </section>
 
-        {/* RIGHT — anchors the current screen's links point to */}
         <section className="col col--links">
           <div className="col__label">
             Links out <span className="count">{links.length}</span>
@@ -188,7 +201,7 @@ export function App() {
                 const sec = bySlug.get(slug)!;
                 return (
                   <li key={slug}>
-                    <button className="card" onClick={() => navigate(slug)}>
+                    <button className="card" onClick={() => navigate(slug)} disabled={editing}>
                       <div className="card__head">
                         <span className="card__title">{sec.title}</span>
                         <span className="card__rel">{rel}</span>
