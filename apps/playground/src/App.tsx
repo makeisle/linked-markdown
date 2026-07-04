@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import wasmUrl from "@lmd/core/pkg/lmd_wasm_bg.wasm?url";
 import { DEMO } from "./demo.js";
 import { EditorShell } from "./EditorShell.js";
+import { ModalViewer } from "./ModalViewer.js";
+import { workspace, type WsDoc } from "./workspace.js";
 
 interface Section {
   slug: string;
@@ -14,11 +16,23 @@ interface Section {
 interface LinkCard {
   id: number;
   srcId: number;
+  /** local: the target section slug; cross: the target anchor slug. */
   slug: string;
   rel: string;
   /** Palette index of the source ref — shared by its text, cards and wires. */
   color: number;
+  kind: "local" | "cross";
+  /** Cross-doc only: import alias + target document, for the modal. */
+  alias?: string;
+  docUuid?: string;
+  /** Resolved display strings (section/anchor title + preview/subtitle). */
+  title: string;
+  preview: string;
 }
+
+type RefTarget =
+  | { kind: "local"; rel: string; slug: string }
+  | { kind: "cross"; rel: string; alias: string; slug: string };
 
 const ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/;
 const ANCHOR_G = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/g;
@@ -67,19 +81,29 @@ function preview(md: string): string {
 
 const blockOf = (el: Element) => (el.closest("h1,h2,h3,h4,h5,h6,p,li") as HTMLElement) ?? (el as HTMLElement);
 
-/** Parse a ref's `data-lmd-targets` (`[role=]addr,… …`) into local targets. */
-function refTargets(s: string): { rel: string; slug: string }[] {
-  const out: { rel: string; slug: string }[] = [];
+/** Parse a ref's `data-lmd-targets` (`[role=]addr,… …`) into local + cross targets. */
+function refTargets(s: string): RefTarget[] {
+  const out: RefTarget[] = [];
   for (const item of s.split(/\s+/).filter(Boolean)) {
     const eq = item.indexOf("=");
     const rel = eq > 0 ? item.slice(0, eq) : "related";
     for (const addr of (eq > 0 ? item.slice(eq + 1) : item).split(",")) {
       if (!addr) continue;
       const a = core.parseAddress(addr);
-      if (a.kind === "local") out.push({ rel, slug: a.slug });
+      if (a.kind === "local") out.push({ kind: "local", rel, slug: a.slug });
+      else if (a.kind === "cross") out.push({ kind: "cross", rel, alias: a.alias, slug: a.target });
     }
   }
   return out;
+}
+
+/** Resolve a cross-doc target through the import table + workspace. */
+function resolveCross(alias: string, slug: string): { doc: WsDoc; title: string } | null {
+  const imp = IMPORTS[alias];
+  if (!imp) return null;
+  const doc = workspace.findByUuid(imp.id);
+  const anchor = doc?.anchors.find((a) => a.slug === slug);
+  return doc && anchor ? { doc, title: anchor.title } : null;
 }
 
 function focusIn(root: HTMLElement | null, slug: string, smooth: boolean) {
@@ -102,6 +126,8 @@ export function App() {
   const [stack, setStack] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [linkCards, setLinkCards] = useState<LinkCard[]>([]);
+  // A cross-doc card/link opens the imported document in a modal, focused.
+  const [modal, setModal] = useState<{ doc: WsDoc; slug: string } | null>(null);
 
   const centerScroll = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
@@ -126,23 +152,38 @@ export function App() {
   linkCardsRef.current = linkCards;
 
   // Colour every ref by its own palette index — the ref's text, its card(s) and
-  // its wire(s) all share that colour. Collect one card per (ref, target).
+  // its wire(s) all share that colour. Collect one card per (ref, target). Both
+  // local (same-document) and cross-document (`alias:slug`) targets get a card.
   useEffect(() => {
     if (!ready) return;
     const paint = (root: HTMLElement | null, collect: boolean) => {
       const list: LinkCard[] = [];
-      let idx = 0; // index among refs with local targets → the ref's colour
+      let idx = 0; // index among refs with a resolvable target → the ref's colour
       let cardId = 0;
       root?.querySelectorAll<HTMLElement>(".lmd-ref").forEach((el) => {
-        const targets = refTargets(el.getAttribute("data-lmd-targets") ?? "").filter((t) =>
-          bySlug.has(t.slug),
-        );
+        const raw = refTargets(el.getAttribute("data-lmd-targets") ?? "");
+        const targets = raw.filter((t) => (t.kind === "local" ? bySlug.has(t.slug) : !!resolveCross(t.alias, t.slug)));
         if (!targets.length) return;
         const color = idx % PALETTE;
         el.classList.add(`lc-${color}`);
+        if (targets.every((t) => t.kind === "cross")) el.classList.add("is-cross");
         if (collect) {
           el.dataset.srcId = String(idx);
-          for (const t of targets) list.push({ id: cardId++, srcId: idx, slug: t.slug, rel: t.rel, color });
+          for (const t of targets) {
+            if (t.kind === "local") {
+              const sec = bySlug.get(t.slug);
+              list.push({
+                id: cardId++, srcId: idx, color, kind: "local", slug: t.slug, rel: t.rel,
+                title: sec?.title ?? t.slug, preview: sec ? preview(sec.md) : "",
+              });
+            } else {
+              const r = resolveCross(t.alias, t.slug)!;
+              list.push({
+                id: cardId++, srcId: idx, color, kind: "cross", slug: t.slug, rel: t.rel,
+                alias: t.alias, docUuid: r.doc.uuid, title: r.title, preview: r.doc.title,
+              });
+            }
+          }
         }
         idx++;
       });
@@ -335,12 +376,18 @@ export function App() {
     setStack(ns);
     scrollTo(ns[ns.length - 1]);
   }
+  function openCross(alias: string, slug: string) {
+    const r = resolveCross(alias, slug);
+    if (r) setModal({ doc: r.doc, slug });
+  }
   function onCenterClick(e: React.MouseEvent) {
     const el = (e.target as HTMLElement).closest(".lmd-ref") as HTMLElement | null;
     if (!el) return;
     e.preventDefault();
     const first = refTargets(el.getAttribute("data-lmd-targets") ?? "")[0];
-    if (first) goto(first.slug);
+    if (!first) return;
+    if (first.kind === "cross") openCross(first.alias, first.slug);
+    else goto(first.slug);
   }
 
   if (error) return <div className="fatal">⚠ {error}</div>;
@@ -421,25 +468,29 @@ export function App() {
         <section className="col col--links">
           <div className="col__label">Links near focus</div>
           <div className="cards-canvas" ref={canvasRef}>
-            {linkCards.map((card) => {
-              const sec = bySlug.get(card.slug);
-              return (
-                <button
-                  key={card.id}
-                  ref={(el) => cardRefs.current.set(card.id, el)}
-                  className={`card lc-${card.color}`}
-                  data-dir="mid"
-                  style={{ display: "none" }}
-                  onClick={() => goto(card.slug)}
-                >
-                  <span className="card__title">{sec?.title ?? card.slug}</span>
-                  <span className="card__preview">{sec ? preview(sec.md) : ""}</span>
-                </button>
-              );
-            })}
+            {linkCards.map((card) => (
+              <button
+                key={card.id}
+                ref={(el) => cardRefs.current.set(card.id, el)}
+                className={`card lc-${card.color}${card.kind === "cross" ? " card--cross" : ""}`}
+                data-dir="mid"
+                style={{ display: "none" }}
+                onClick={() => (card.kind === "cross" ? openCross(card.alias!, card.slug) : goto(card.slug))}
+              >
+                {card.kind === "cross" && (
+                  <span className="card__ext">
+                    ↗ {card.alias}:{card.slug}
+                  </span>
+                )}
+                <span className="card__title">{card.title}</span>
+                <span className="card__preview">{card.preview}</span>
+              </button>
+            ))}
           </div>
         </section>
       </main>
+
+      {modal && <ModalViewer doc={modal.doc} slug={modal.slug} onClose={() => setModal(null)} />}
     </div>
   );
 }
