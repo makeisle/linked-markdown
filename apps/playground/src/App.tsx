@@ -13,7 +13,9 @@ interface Section {
 }
 interface LinkCard {
   id: number;
+  srcId: number;
   slug: string;
+  rel: string;
 }
 
 const ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/;
@@ -105,15 +107,32 @@ export function App() {
     if (!ready) return;
     const paint = (root: HTMLElement | null, collect: boolean) => {
       const list: LinkCard[] = [];
-      root?.querySelectorAll<HTMLAnchorElement>("a.lmd-ref").forEach((a, i) => {
-        const t = core.parseAddress(a.dataset.lmdTarget ?? "");
-        if (t.kind === "local" && colorOf.has(t.slug)) {
-          a.classList.add(`lc-${colorOf.get(t.slug)}`);
-          if (collect) {
-            a.dataset.linkId = String(i);
-            list.push({ id: i, slug: t.slug });
+      let srcId = 0;
+      let cardId = 0;
+      // Every source is either a visible link (one target) or an invisible
+      // relation span (possibly many targets). Each (source, target) is a card.
+      root?.querySelectorAll<HTMLElement>("a.lmd-ref, .lmd-relsrc").forEach((el) => {
+        const targets: { slug: string; rel: string }[] = [];
+        if (el.matches("a.lmd-ref")) {
+          const t = core.parseAddress(el.dataset.lmdTarget ?? "");
+          if (t.kind === "local" && colorOf.has(t.slug)) {
+            el.classList.add(`lc-${colorOf.get(t.slug)}`);
+            targets.push({ slug: t.slug, rel: "related" });
+          }
+        } else {
+          const inner = el.getAttribute("data-lmd-rel") ?? "";
+          for (const m of inner.matchAll(/([a-z_]+)=([^\s]+)/g)) {
+            for (const addr of m[2].split(",")) {
+              const t = core.parseAddress(addr);
+              if (t.kind === "local" && colorOf.has(t.slug)) targets.push({ slug: t.slug, rel: m[1] });
+            }
           }
         }
+        if (collect && targets.length) {
+          el.dataset.srcId = String(srcId);
+          for (const t of targets) list.push({ id: cardId++, srcId, slug: t.slug, rel: t.rel });
+        }
+        srcId++;
       });
       return list;
     };
@@ -131,7 +150,7 @@ export function App() {
     for (const card of linkCardsRef.current) {
       const el = cardRefs.current.get(card.id);
       if (!el) continue;
-      const src = root.querySelector<HTMLElement>(`a.lmd-ref[data-link-id="${card.id}"]`);
+      const src = root.querySelector<HTMLElement>(`[data-src-id="${card.srcId}"]`);
       if (!src) {
         el.style.display = "none";
         continue;

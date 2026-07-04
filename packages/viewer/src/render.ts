@@ -31,7 +31,8 @@ export interface RenderResult {
 }
 
 const RE_ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)(?:\s+rev=\d+)?\s*-->/g;
-const RE_OTHER_COMMENT = /<!--lmd:(?:rel|ref)\b.*?-->/g;
+const RE_REL = /<!--lmd:rel\s+(.*?)\s*-->/g;
+const RE_REF = /<!--lmd:ref\b.*?-->/g;
 
 function escapeAttr(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -45,7 +46,14 @@ function preprocess(body: string): string {
       (_m, slug: string) =>
         `<span class="lmd-anchor" id="lmd-${escapeAttr(slug)}" data-lmd-anchor="${escapeAttr(slug)}"></span>`,
     )
-    .replace(RE_OTHER_COMMENT, "");
+    // An invisible relation marks its source position so an overlay can draw
+    // connectors; keep the raw `role=target,…` pairs on a data attribute.
+    .replace(
+      RE_REL,
+      (_m, inner: string) => `<span class="lmd-relsrc" data-lmd-rel="${escapeAttr(inner.trim())}"></span>`,
+    )
+    // A ref only annotates the visible link that precedes it; drop it.
+    .replace(RE_REF, "");
 }
 
 function makeMarkdown(): MarkdownIt {
