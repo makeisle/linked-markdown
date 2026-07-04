@@ -235,59 +235,65 @@ body {
   .reader { height: auto; min-height: 100%; }
 }
 
-/* ==== v3: scroll-linked focus, coloured links, needle cards ==== */
+
+/* ==== v4: 3-col, fixed focus line, all-links minimap cards ==== */
 :root { --l0: #7c9cff; --l1: #5fd6a6; --l2: #f2b45e; --l3: #e78bd0; }
-.lc-0 { --lc: var(--l0); }
-.lc-1 { --lc: var(--l1); }
-.lc-2 { --lc: var(--l2); }
-.lc-3 { --lc: var(--l3); }
+.lc-0 { --lc: var(--l0); } .lc-1 { --lc: var(--l1); } .lc-2 { --lc: var(--l2); } .lc-3 { --lc: var(--l3); }
 
-/* header focus indicator */
 .focusnow { font-size: 12.5px; color: var(--text-faint); display: flex; align-items: center; gap: 7px; }
+.cols--3 { grid-template-columns: 0.78fr 1.5fr 0.92fr; }
 
-/* two-column layout: document + link cards */
-.cols--2 { grid-template-columns: 1.7fr 0.82fr; }
-
-/* Coloured links inside the document */
+/* coloured links */
 .doc__body a.lmd-ref {
   color: var(--lc, var(--link));
-  border-bottom: 1.5px solid;
-  border-color: color-mix(in srgb, var(--lc, var(--link)) 55%, transparent);
+  border-bottom: 1.5px solid; border-color: color-mix(in srgb, var(--lc, var(--link)) 55%, transparent);
   font-weight: 500;
 }
 .doc__body a.lmd-ref:hover { background: color-mix(in srgb, var(--lc, var(--link)) 16%, transparent); border-bottom-color: var(--lc, var(--link)); }
 
-/* Center document scroller: focus sits on the vertical mid-line */
-.doc--current { position: relative; padding: 0; }
-.doc--current .doc__body { padding: 48vh 36px; max-width: 66ch; margin: 0 auto; }
+/* wrap holds the fixed focus line as an overlay over the scroller */
+.doc-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
+.doc-wrap .doc { flex: 1; min-height: 0; width: 100%; }
 .focusline {
-  position: absolute; left: 0; right: 0; top: 50%; z-index: 3; pointer-events: none;
-  border-top: 1px dashed rgba(124, 156, 255, 0.28);
+  position: absolute; left: 0; right: 0; top: 50%; z-index: 6; pointer-events: none;
+  border-top: 1px dashed rgba(124, 156, 255, 0.35);
 }
 .focusline::before {
-  content: "focus"; position: absolute; left: 10px; top: -8px;
+  content: "focus"; position: absolute; left: 12px; top: -8px;
   font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
-  color: rgba(124, 156, 255, 0.55); background: var(--panel); padding: 0 5px;
+  color: rgba(124, 156, 255, 0.7); background: var(--panel); padding: 0 6px;
 }
-.lmd-focus { scroll-margin: 0; }
+.focusline--sm { border-top-color: rgba(124, 156, 255, 0.2); }
+.focusline--sm::before { content: ""; }
 
-/* Right column canvas + absolutely-positioned needle cards */
+/* center document: focus sits on the vertical mid-line, big spacers */
+.doc--current { padding: 0; }
+.doc--current .doc__body { padding: 48vh 36px; max-width: 66ch; margin: 0 auto; }
+
+/* left (previous) document, dimmed + centered on the previous focus */
+.col--prev .doc--ghost { padding: 0; }
+.col--prev .doc--ghost .doc__body { padding: 42vh 18px; pointer-events: none; }
+
+/* right column: absolutely-positioned needle cards for every link */
 .col--links .cards-canvas { position: relative; flex: 1; min-height: 0; overflow: hidden; }
 .col--links .card {
-  position: absolute; left: 10px; right: 4px; top: 0; width: auto;
-  transition: top 0.22s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.12s, box-shadow 0.12s;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--lc, var(--accent));
-  background: color-mix(in srgb, var(--lc, var(--accent)) 7%, var(--panel));
+  position: absolute; left: 11px; right: 4px; top: 0; width: auto;
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 11px; border-radius: 10px;
+  border: 1px solid var(--border); border-left: 3px solid var(--lc, var(--accent));
+  background: color-mix(in srgb, var(--lc, var(--accent)) 8%, var(--panel));
+  transition: top 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s, border-color 0.12s, box-shadow 0.12s;
 }
 .col--links .card:hover {
-  transform: none; border-color: var(--lc, var(--accent));
+  transform: none; opacity: 1 !important; border-color: var(--lc, var(--accent));
   box-shadow: 0 14px 30px -18px color-mix(in srgb, var(--lc, var(--accent)) 80%, transparent);
 }
-.card__rel { color: var(--lc, var(--accent)); background: color-mix(in srgb, var(--lc, var(--accent)) 15%, transparent); }
-.card__go { display: none; }
+.col--links .card__title { font-weight: 600; font-size: 13px; color: var(--text); }
+.col--links .card__preview {
+  font-size: 11px; line-height: 1.4; color: var(--text-dim);
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
 
-/* the needle: a sharp pin on the card's left edge, aimed at the source link */
+/* needle on the card's left edge, aimed at the source link */
 .needle {
   position: absolute; left: -9px; width: 0; height: 0;
   border-top: 7px solid transparent; border-bottom: 7px solid transparent;
@@ -295,5 +301,5 @@ body {
   filter: drop-shadow(-1px 0 1.5px rgba(0, 0, 0, 0.35));
 }
 .card[data-dir="mid"] .needle { top: 50%; transform: translateY(-50%); }
-.card[data-dir="up"] .needle { top: 11px; transform: rotate(-24deg); }
-.card[data-dir="down"] .needle { bottom: 11px; transform: rotate(24deg); }
+.card[data-dir="up"] .needle { top: 9px; transform: rotate(-26deg); }
+.card[data-dir="down"] .needle { bottom: 9px; transform: rotate(26deg); }

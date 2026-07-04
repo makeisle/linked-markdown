@@ -11,6 +11,10 @@ interface Section {
   title: string;
   md: string;
 }
+interface LinkCard {
+  id: number;
+  slug: string;
+}
 
 const ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/;
 const ANCHOR_G = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/g;
@@ -42,26 +46,39 @@ function preview(md: string): string {
     .replace(/[#>*_`]/g, "")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 150);
+    .slice(0, 110);
 }
 
 const blockOf = (el: Element) => (el.closest("h1,h2,h3,h4,h5,h6,p,li") as HTMLElement) ?? (el as HTMLElement);
+
+function focusIn(root: HTMLElement | null, slug: string, smooth: boolean) {
+  if (!root) return;
+  root.querySelectorAll(".lmd-focus").forEach((e) => e.classList.remove("lmd-focus"));
+  const el = root.querySelector(`[data-lmd-anchor="${slug}"]`);
+  if (!el) return;
+  const block = blockOf(el);
+  block.classList.add("lmd-focus");
+  block.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center" });
+}
 
 export function App() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState(DEMO);
   const [focusSlug, setFocusSlug] = useState<string | null>(null);
+  const [prevSlug, setPrevSlug] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [linkCards, setLinkCards] = useState<LinkCard[]>([]);
 
   const centerScroll = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
+  const prevRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef(new Map<string, HTMLButtonElement | null>());
+  const cardRefs = useRef(new Map<number, HTMLButtonElement | null>());
 
   const focusRef = useRef<string | null>(null);
   const sectionsRef = useRef<Section[]>([]);
-  const outgoingRef = useRef(new Map<string, { slug: string; rel: string }[]>());
+  const linkCardsRef = useRef<LinkCard[]>([]);
   const colorRef = useRef(new Map<string, number>());
 
   useEffect(() => {
@@ -77,107 +94,76 @@ export function App() {
     return m;
   }, [sections]);
 
-  const [outgoing, setOutgoing] = useState<Map<string, { slug: string; rel: string }[]>>(new Map());
   sectionsRef.current = sections;
-  outgoingRef.current = outgoing;
+  linkCardsRef.current = linkCards;
   colorRef.current = colorOf;
 
+  // Tag + colour every link in both panes; collect the full card list (all links).
   useEffect(() => {
     if (!ready) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const doc = await core.build(`---\nlmd: 1\nid: demo\nversion: 1\ntitle: Demo\n---\n\n${body}\n`);
-        if (cancelled) return;
-        const map = new Map<string, { slug: string; rel: string }[]>();
-        for (const e of doc.manifest?.edges ?? []) {
-          const addr = core.parseAddress(e.to);
-          if (addr.kind !== "local" || !bySlug.has(addr.slug)) continue;
-          const list = map.get(e.from) ?? [];
-          if (!list.some((x) => x.slug === addr.slug)) list.push({ slug: addr.slug, rel: e.rel });
-          map.set(e.from, list);
+    const paint = (root: HTMLElement | null, collect: boolean) => {
+      const list: LinkCard[] = [];
+      root?.querySelectorAll<HTMLAnchorElement>("a.lmd-ref").forEach((a, i) => {
+        const t = core.parseAddress(a.dataset.lmdTarget ?? "");
+        if (t.kind === "local" && colorOf.has(t.slug)) {
+          a.classList.add(`lc-${colorOf.get(t.slug)}`);
+          if (collect) {
+            a.dataset.linkId = String(i);
+            list.push({ id: i, slug: t.slug });
+          }
         }
-        setOutgoing(map);
-      } catch (e) {
-        if (!cancelled) setError(String(e));
-      }
-    })();
-    return () => {
-      cancelled = true;
+      });
+      return list;
     };
-  }, [ready, body, bySlug]);
-
-  // Colour every link in the document by its target's stable palette index.
-  useEffect(() => {
-    const root = centerRef.current;
-    if (!root) return;
-    root.querySelectorAll<HTMLAnchorElement>("a.lmd-ref").forEach((a) => {
-      const t = core.parseAddress(a.dataset.lmdTarget ?? "");
-      if (t.kind === "local" && colorOf.has(t.slug)) {
-        a.classList.add(`lc-${colorOf.get(t.slug)}`);
-      }
-    });
+    setLinkCards(paint(centerRef.current, true));
+    paint(prevRef.current, false);
   }, [ready, docHtml, colorOf, editing]);
-
-  const lineY = () => {
-    const r = centerScroll.current!.getBoundingClientRect();
-    return r.top + r.height / 2;
-  };
-
-  const nearestLink = (slug: string, y: number): HTMLElement | null => {
-    let best: HTMLElement | null = null;
-    let bd = Infinity;
-    centerRef.current?.querySelectorAll<HTMLElement>(`a.lmd-ref[data-lmd-target=":${slug}"]`).forEach((e) => {
-      const r = e.getBoundingClientRect();
-      const d = Math.abs(r.top + r.height / 2 - y);
-      if (d < bd) {
-        bd = d;
-        best = e;
-      }
-    });
-    return best;
-  };
 
   const layoutCards = () => {
     const canvas = canvasRef.current;
-    if (!canvas || !centerScroll.current) return;
+    const root = centerRef.current;
+    if (!canvas || !root) return;
     const cRect = canvas.getBoundingClientRect();
-    const y0 = lineY();
-    const links = outgoingRef.current.get(focusRef.current ?? "") ?? [];
-    const items = links
-      .map(({ slug }) => {
-        const src = nearestLink(slug, y0);
-        const el = cardRefs.current.get(slug);
-        const h = el?.offsetHeight ?? 66;
-        let srcY = cRect.height / 2;
-        if (src) {
-          const r = src.getBoundingClientRect();
-          srcY = r.top + r.height / 2 - cRect.top;
-        }
-        return { slug, srcY, h, el };
-      })
-      .sort((a, b) => a.srcY - b.srcY);
-
-    const gap = 12;
+    const midY = cRect.height / 2;
+    const visible: { el: HTMLButtonElement; srcY: number; h: number }[] = [];
+    for (const card of linkCardsRef.current) {
+      const el = cardRefs.current.get(card.id);
+      if (!el) continue;
+      const src = root.querySelector<HTMLElement>(`a.lmd-ref[data-link-id="${card.id}"]`);
+      if (!src) {
+        el.style.display = "none";
+        continue;
+      }
+      const r = src.getBoundingClientRect();
+      const srcY = r.top + r.height / 2 - cRect.top;
+      if (srcY < -40 || srcY > cRect.height + 40) {
+        el.style.display = "none";
+        continue;
+      }
+      el.style.display = "";
+      visible.push({ el, srcY, h: el.offsetHeight || 58 });
+    }
+    visible.sort((a, b) => a.srcY - b.srcY);
+    const gap = 8;
     let prevBottom = -1e9;
-    for (const it of items) {
+    for (const it of visible) {
       let top = it.srcY - it.h / 2;
       if (top < prevBottom + gap) top = prevBottom + gap;
-      top = Math.max(6, Math.min(top, cRect.height - it.h - 6));
+      top = Math.max(4, Math.min(top, cRect.height - it.h - 4));
       prevBottom = top + it.h;
-      const center = top + it.h / 2;
-      const dir = it.srcY < center - 6 ? "up" : it.srcY > center + 6 ? "down" : "mid";
-      if (it.el) {
-        it.el.style.top = `${top}px`;
-        it.el.dataset.dir = dir;
-      }
+      const cc = top + it.h / 2;
+      it.el.style.top = `${top}px`;
+      it.el.dataset.dir = it.srcY < cc - 5 ? "up" : it.srcY > cc + 5 ? "down" : "mid";
+      it.el.style.opacity = String(Math.max(0.4, 1 - (Math.abs(cc - midY) / midY) * 0.7));
     }
   };
 
   const computeFocus = () => {
     const root = centerRef.current;
-    if (!root || !centerScroll.current) return;
-    const y0 = lineY();
+    const sc = centerScroll.current;
+    if (!root || !sc) return;
+    const r = sc.getBoundingClientRect();
+    const lineY = r.top + r.height / 2;
     let best: string | null = null;
     let bd = Infinity;
     let bestBlock: HTMLElement | null = null;
@@ -185,8 +171,8 @@ export function App() {
       const el = root.querySelector(`[data-lmd-anchor="${s.slug}"]`);
       if (!el) continue;
       const block = blockOf(el);
-      const r = block.getBoundingClientRect();
-      const d = Math.abs(r.top + r.height / 2 - y0);
+      const br = block.getBoundingClientRect();
+      const d = Math.abs(br.top + br.height / 2 - lineY);
       if (d < bd) {
         bd = d;
         best = s.slug;
@@ -197,16 +183,16 @@ export function App() {
       root.querySelectorAll(".lmd-focus").forEach((e) => e.classList.remove("lmd-focus"));
       bestBlock.classList.add("lmd-focus");
       if (best !== focusRef.current) {
+        setPrevSlug(focusRef.current);
         focusRef.current = best;
         setFocusSlug(best);
       }
     }
   };
 
-  // Scroll listener: recompute focus + reposition cards as the reader scrolls.
   useEffect(() => {
     const sc = centerScroll.current;
-    if (!sc || editing) return;
+    if (!sc || !ready || editing) return;
     const onScroll = () => {
       computeFocus();
       layoutCards();
@@ -216,48 +202,50 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, editing, docHtml]);
 
-  // Center the first anchor once loaded, then let scroll drive focus.
+  // Initial centering, then focus follows scroll.
   useEffect(() => {
     if (!ready || editing || !sections.length) return;
     const t = setTimeout(() => {
-      if (!focusRef.current) {
-        const el = centerRef.current?.querySelector(`[data-lmd-anchor="${sections[0].slug}"]`);
-        if (el) blockOf(el).scrollIntoView({ block: "center" });
-      }
+      if (!focusRef.current) focusIn(centerRef.current, sections[0].slug, false);
       computeFocus();
       layoutCards();
     }, 0);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, docHtml, editing, outgoing]);
+  }, [ready, docHtml, editing, linkCards]);
 
-  // Reposition cards whenever the card set changes.
   useEffect(() => {
     layoutCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusSlug, outgoing]);
+  }, [linkCards]);
 
-  function focusOn(slug: string) {
-    const el = centerRef.current?.querySelector(`[data-lmd-anchor="${slug}"]`);
-    if (el) blockOf(el).scrollIntoView({ behavior: "smooth", block: "center" });
+  // Left pane mirrors the previous focus, centered.
+  useEffect(() => {
+    if (prevSlug) focusIn(prevRef.current, prevSlug, false);
+  }, [prevSlug, docHtml]);
+
+  function goto(slug: string) {
+    focusIn(centerRef.current, slug, true);
+    setTimeout(() => {
+      computeFocus();
+      layoutCards();
+    }, 260);
   }
-
   function onCenterClick(e: React.MouseEvent) {
     const a = (e.target as HTMLElement).closest("a.lmd-ref") as HTMLAnchorElement | null;
     if (!a) return;
     e.preventDefault();
     const addr = core.parseAddress(a.dataset.lmdTarget ?? "");
-    if (addr.kind === "local") focusOn(addr.slug);
+    if (addr.kind === "local") goto(addr.slug);
   }
 
   if (error) return <div className="fatal">⚠ {error}</div>;
   if (!ready) return <div className="loading">Loading…</div>;
 
   const current = focusSlug ? bySlug.get(focusSlug) : sections[0];
-  const links = focusSlug ? outgoing.get(focusSlug) ?? [] : [];
 
   return (
-    <div className="reader reader--2col">
+    <div className="reader">
       <header className="reader__bar">
         <div className="brand">
           <span className="brand__mark" aria-hidden>
@@ -271,7 +259,24 @@ export function App() {
         </div>
       </header>
 
-      <main className="cols cols--2">
+      <main className="cols cols--3">
+        <section className="col col--prev">
+          <div className="col__label">Previous</div>
+          {prevSlug ? (
+            <div className="doc-wrap">
+              <div className="focusline focusline--sm" aria-hidden />
+              <div className="doc doc--ghost" onClick={() => goto(prevSlug)} title="Back here">
+                <article className="doc__body" ref={prevRef} dangerouslySetInnerHTML={{ __html: docHtml }} />
+              </div>
+              <div className="doc__badge">
+                {bySlug.get(prevSlug)?.title} · ← back
+              </div>
+            </div>
+          ) : (
+            <div className="col__empty">No history yet — scroll or follow a link.</div>
+          )}
+        </section>
+
         <section className="col col--current">
           <div className="col__label">
             Document
@@ -292,37 +297,33 @@ export function App() {
               onCancel={() => setEditing(false)}
             />
           ) : (
-            <div className="doc doc--current" ref={centerScroll}>
+            <div className="doc-wrap">
               <div className="focusline" aria-hidden />
-              <article className="doc__body" ref={centerRef} onClick={onCenterClick} dangerouslySetInnerHTML={{ __html: docHtml }} />
+              <div className="doc doc--current" ref={centerScroll}>
+                <article className="doc__body" ref={centerRef} onClick={onCenterClick} dangerouslySetInnerHTML={{ __html: docHtml }} />
+              </div>
             </div>
           )}
         </section>
 
         <section className="col col--links">
-          <div className="col__label">
-            Links from <span className="focustag">{current?.title}</span>
-            <span className="count">{links.length}</span>
-          </div>
+          <div className="col__label">Links near focus</div>
           <div className="cards-canvas" ref={canvasRef}>
-            {links.length === 0 && <div className="col__empty">This section links nowhere.</div>}
-            {links.map(({ slug, rel }) => {
-              const sec = bySlug.get(slug)!;
-              const ci = colorOf.get(slug) ?? 0;
+            {linkCards.map((card) => {
+              const sec = bySlug.get(card.slug);
+              const ci = colorOf.get(card.slug) ?? 0;
               return (
                 <button
-                  key={slug}
-                  ref={(el) => cardRefs.current.set(slug, el)}
+                  key={card.id}
+                  ref={(el) => cardRefs.current.set(card.id, el)}
                   className={`card lc-${ci}`}
                   data-dir="mid"
-                  onClick={() => focusOn(slug)}
+                  style={{ display: "none" }}
+                  onClick={() => goto(card.slug)}
                 >
                   <span className="needle" aria-hidden />
-                  <div className="card__head">
-                    <span className="card__title">{sec.title}</span>
-                    <span className="card__rel">{rel}</span>
-                  </div>
-                  <div className="card__preview">{preview(sec.md)}</div>
+                  <span className="card__title">{sec?.title ?? card.slug}</span>
+                  <span className="card__preview">{sec ? preview(sec.md) : ""}</span>
                 </button>
               );
             })}
