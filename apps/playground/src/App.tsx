@@ -475,22 +475,6 @@ export function App() {
   if (error) return <div className="fatal">⚠ {error}</div>;
   if (!ready) return <div className="loading">Loading…</div>;
 
-  // Editing takes over the whole screen — no reader columns.
-  if (editing) {
-    return (
-      <EditorShell
-        initial={body}
-        anchors={sections.map((s) => ({ slug: s.slug, title: s.title }))}
-        imports={IMPORTS}
-        onSave={(b) => {
-          setBody(b);
-          setEditing(false);
-        }}
-        onCancel={() => setEditing(false)}
-      />
-    );
-  }
-
   const current = focusSlug ? bySlug.get(focusSlug) : sections[0];
 
   return (
@@ -501,14 +485,32 @@ export function App() {
             ⬡
           </span>
           <span className="brand__name">Linked Markdown</span>
-          <span className="brand__tag">reader</span>
+          <span className="brand__tag">{editing ? "editor" : "reader"}</span>
         </div>
-        <div className="focusnow">
-          {viewKey !== MAIN_KEY && <span className="focusdoc">{view.title} ↗</span>}
-          Focused on <span className="focustag">{current?.title}</span>
-        </div>
+        {editing ? (
+          <div className="focusnow">
+            Editing <span className="focustag">{FM.title}</span>
+          </div>
+        ) : (
+          <div className="focusnow">
+            {viewKey !== MAIN_KEY && <span className="focusdoc">{view.title} ↗</span>}
+            Focused on <span className="focustag">{current?.title}</span>
+          </div>
+        )}
       </header>
 
+      {editing ? (
+        <EditorShell
+          initial={body}
+          anchors={sections.map((s) => ({ slug: s.slug, title: s.title }))}
+          imports={IMPORTS}
+          onSave={(b) => {
+            setBody(b);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
       <main className="cols cols--3">
         <svg className="wires" ref={wiresRef} aria-hidden />
         <section className="col col--prev">
@@ -585,6 +587,7 @@ export function App() {
           </div>
         </section>
       </main>
+      )}
     </div>
   );
 }

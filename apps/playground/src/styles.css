@@ -340,7 +340,7 @@ body {
 }
 
 /* ── Fullscreen editor shell ─────────────────────────────────────────────── */
-.eshell { display: flex; height: 100%; background: var(--bg); }
+.eshell { display: flex; flex: 1; min-height: 0; background: var(--bg); }
 .emain { flex: 1; min-width: 0; padding: 14px; display: flex; }
 .emain .editor { flex: 1; }
 
