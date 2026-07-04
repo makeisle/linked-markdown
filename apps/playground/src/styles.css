@@ -133,7 +133,7 @@ body {
 .doc__body h1 { font-family: var(--font); font-size: 1.6em; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 0.6em; }
 .doc__body h2 { font-family: var(--font); font-size: 1.28em; font-weight: 650; margin: 0 0 0.5em; }
 .doc__body p { margin: 0.75em 0; }
-.doc__body a, .doc__body a.lmd-ref {
+.doc__body a, .doc__body .lmd-ref {
   color: var(--link);
   text-decoration: none;
   border-bottom: 1px solid rgba(143, 176, 255, 0.35);
@@ -141,7 +141,7 @@ body {
   transition: border-color 0.12s, background 0.12s;
   border-radius: 2px;
 }
-.doc__body a.lmd-ref:hover { border-bottom-color: var(--link); background: rgba(143, 176, 255, 0.12); }
+.doc__body .lmd-ref:hover { border-bottom-color: var(--link); background: rgba(143, 176, 255, 0.12); }
 
 /* Right column — link target cards */
 .cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; min-height: 0; }
@@ -244,12 +244,12 @@ body {
 .cols--3 { grid-template-columns: 0.78fr 1.5fr 0.92fr; }
 
 /* coloured links */
-.doc__body a.lmd-ref {
+.doc__body .lmd-ref {
   color: var(--lc, var(--link));
   border-bottom: 1.5px solid; border-color: color-mix(in srgb, var(--lc, var(--link)) 55%, transparent);
   font-weight: 500;
 }
-.doc__body a.lmd-ref:hover { background: color-mix(in srgb, var(--lc, var(--link)) 16%, transparent); border-bottom-color: var(--lc, var(--link)); }
+.doc__body .lmd-ref:hover { background: color-mix(in srgb, var(--lc, var(--link)) 16%, transparent); border-bottom-color: var(--lc, var(--link)); }
 
 /* wrap holds the fixed focus line as an overlay over the scroller */
 .doc-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
@@ -311,3 +311,11 @@ body {
   pointer-events: none; overflow: visible; z-index: 30;
 }
 .wires path { stroke-linecap: round; }
+
+/* ref spans (the source text of a link) */
+.doc__body .lmd-ref { cursor: pointer; }
+.lc-multi { --lc: var(--text-dim); }
+.doc__body .lmd-ref.lc-multi {
+  border-bottom: 1.5px dashed var(--text-dim);
+  color: var(--text);
+}

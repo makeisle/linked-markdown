@@ -39,9 +39,8 @@ export interface ScanResult {
 }
 
 const RE_ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)(?:\s+rev=\d+)?\s*-->/g;
-const RE_REL = /<!--lmd:rel\s+(.*?)\s*-->/g;
-const RE_REL_PAIR = /([a-z_]+)=([^\s]+)/g;
-const RE_LINK = /\[[^\]]*\]\(([^)\s]+)\)/g;
+// A ref opener lists 1..N typed targets: <!--lmd:ref [role=]addr,… …-->.
+const RE_REF_OPEN = /<!--lmd:ref\s+(.*?)\s*-->/g;
 
 function frontmatter(lines: string[]): { imports: string[]; bodyStartLine: number } {
   if (lines[0]?.trim() !== "---") return { imports: [], bodyStartLine: 0 };
@@ -105,22 +104,15 @@ export function scan(text: string): ScanResult {
       });
     }
 
-    for (const m of eachMatch(RE_REL, text)) {
-      for (const pair of eachMatch(RE_REL_PAIR, m[1])) {
-        const rel = pair[1];
-        for (const addr of pair[2].split(",")) {
-          if (!addr) continue;
+    for (const m of eachMatch(RE_REF_OPEN, text)) {
+      for (const item of m[1].split(/\s+/).filter(Boolean)) {
+        const eq = item.indexOf("=");
+        const rel = eq > 0 ? item.slice(0, eq) : "related";
+        for (const addr of (eq > 0 ? item.slice(eq + 1) : item).split(",")) {
+          if (!addr || parseAddress(addr).kind === "external") continue;
           const at = text.indexOf(addr, m.index);
           edges.push({ target: addr, rel, range: span(line, at, addr.length) });
         }
-      }
-    }
-
-    for (const m of eachMatch(RE_LINK, text)) {
-      const target = m[1];
-      if (parseAddress(target).kind !== "external") {
-        const at = text.indexOf(target, m.index);
-        edges.push({ target, rel: "related", range: span(line, at, target.length) });
       }
     }
   }

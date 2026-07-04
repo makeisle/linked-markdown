@@ -7,4 +7,5 @@ title: Clean document
 
 ## Intro <!--lmd:a intro-->
 
-A self-contained block with a valid local link to [the intro](:intro).
+A self-contained block with a valid link back to
+<!--lmd:ref :intro-->the intro<!--/lmd-->.

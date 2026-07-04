@@ -74,19 +74,29 @@ floats to the target's current version.
 
 ## 4. Body — escape tags
 
-Every escape tag is an HTML comment of the form `<!--lmd:<op> <args> -->`. v1
-defines three.
+Beyond plain Markdown, a `.lmd` body uses exactly **two** escape-tag constructs,
+both invisible in any Markdown renderer:
 
-### 4.1 Anchor — *"this block is a link target"*
+- an **anchor** marks a block as a linkable target;
+- a **ref** wraps a span of text and links it to one or more anchors.
+
+That is the whole link model. Anchors are pure targets — they carry a UUID and
+nothing else, and never hold outgoing links. Refs are the *only* way to link, and
+a single ref may point at **1..N anchors, each with its own relationship type**.
+
+> A normal Markdown link `[text](url)` is just a hyperlink to a URL. It is **not**
+> an lmd link and carries no lmd meaning — lmd links live only in the escape tags.
+
+### 4.1 Anchor — a link target
 
 ```markdown
 ## Membership authentication <!--lmd:a cap-auth-->
-A user must be able to sign up. <!--lmd:a req-001 rev=2-->
 ```
 
-Registers a block as a target. `slug` matches `[a-z][a-z0-9-]*` and is unique
-within the document. Optional `rev=N` sets a node-level revision (default 1). The
-manifest binds `slug → { uuid, kind, hash, origin? }`.
+A self-closing tag at the end of a block. `slug` matches `[a-z][a-z0-9-]*` and is
+unique in the document; optional `rev=N` sets a node revision (default 1). An
+anchor only marks a target. The manifest binds
+`slug → { uuid, kind, hash, origin? }`.
 
 Attachment position by block kind:
 
@@ -98,27 +108,31 @@ Attachment position by block kind:
 | code block | the line **after** the closing fence |
 | image / thematic break | end of the same line |
 
-### 4.2 Visible ref — *"this text links somewhere"*
+### 4.2 Ref — a typed link from a span to 1..N anchors
+
+A ref **wraps its source text** between an opening tag and a close:
 
 ```markdown
-[performance policy](policy:perf@2)
-[auth capability](design:cap-auth)<!--lmd:ref rel=policy-->
+Everything hangs on <!--lmd:ref :extraction-->the extraction<!--/lmd-->.
+
+<!--lmd:ref covers=:lexer,:parser,:sema refines=:codegen-->the front end<!--/lmd-->
+turns your language into an IR.
 ```
 
-An ordinary Markdown link whose target is an lmd address (§5). An optional
-trailing `<!--lmd:ref rel=<role> note="…"-->` adds the semantic role (default
-`related`).
+- Open `<!--lmd:ref <targets>-->`, close `<!--/lmd-->`. The text between is the
+  visible **source** (rendered as a link; in a plain renderer the comments vanish
+  and it is ordinary text).
+- `<targets>` is one or more space-separated items; each item is
+  `[<role>=]<address>[,<address>…]` (§5, §6). A bare address list takes the
+  default role `related`. **The syntax is identical for 1 target or many** — you
+  only add more addresses.
+- Refs do not nest.
 
-### 4.3 Invisible relation — *"attach edges to this block without changing text"*
-
-```markdown
-A user signs up through a trusted path.
-<!--lmd:rel parent=:s2b-cap-auth impacts=design:uc-join,design:uc-approve-->
-```
-
-Form: `<!--lmd:rel <role>=<addr>[,<addr>…] [<role2>=…] -->`. Attaches typed edges
-to the nearest preceding anchored block. Comma-separates multiple targets for one
-role.
+| Written | Meaning |
+|---|---|
+| `<!--lmd:ref :parser-->the parser<!--/lmd-->` | one edge → `:parser` (`related`) |
+| `<!--lmd:ref :lexer,:parser-->the front half<!--/lmd-->` | two `related` edges |
+| `<!--lmd:ref covers=:lexer,:parser refines=:sema-->…<!--/lmd-->` | typed edges |
 
 ## 5. Addresses
 

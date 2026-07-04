@@ -8,8 +8,12 @@ test("anchor label is the slug without the closing dashes", () => {
   assert.equal(describeComment("<!--lmd:a cap-auth rev=2-->").label, "cap-auth");
 });
 
-test("ref and rel labels", () => {
-  assert.equal(describeComment("<!--lmd:ref rel=policy-->").kind, "ref");
-  assert.equal(describeComment("<!--lmd:ref rel=policy-->").label, "policy");
-  assert.equal(describeComment("<!--lmd:rel impacts=:a,:b parent=:c-->").label, "impacts · parent");
+test("ref labels show roles, or a target count when untyped", () => {
+  assert.equal(describeComment("<!--lmd:ref policy=:perf-->").kind, "ref");
+  assert.equal(describeComment("<!--lmd:ref impacts=:a,:b parent=:c-->").label, "impacts · parent");
+  assert.equal(describeComment("<!--lmd:ref :a,:b-->").label, "2 targets");
+});
+
+test("the ref close is its own chip", () => {
+  assert.equal(describeComment("<!--/lmd-->").kind, "close");
 });

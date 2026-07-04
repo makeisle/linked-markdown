@@ -5,9 +5,7 @@ import { markdownToTiptap, tiptapToMarkdown } from "../src/bridge.js";
 const BODY = [
   "## Authentication <!--lmd:a auth-->",
   "",
-  "A member signs up. See [the policy](policy:perf@2)<!--lmd:ref rel=policy-->.",
-  "",
-  "<!--lmd:rel impacts=:uc-join-->",
+  "A member signs up under <!--lmd:ref policy=policy:perf@2 impacts=:uc-join-->the policy<!--/lmd-->.",
   "",
   "- First item <!--lmd:a item-one-->",
   "- Second item",
@@ -38,8 +36,8 @@ test("escape comments and addresses survive the TipTap bridge", () => {
   const out = tiptapToMarkdown(markdownToTiptap(BODY));
   for (const fragment of [
     "<!--lmd:a auth-->",
-    "<!--lmd:ref rel=policy-->",
-    "<!--lmd:rel impacts=:uc-join-->",
+    "<!--lmd:ref policy=policy:perf@2 impacts=:uc-join-->",
+    "<!--/lmd-->",
     "<!--lmd:a item-one-->",
     "policy:perf@2",
   ]) {

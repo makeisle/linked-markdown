@@ -52,18 +52,23 @@ Attachment by block kind: heading/paragraph → end of line; list item → end o
 item text; table row → end of the last cell; code block → the line *after* the
 closing fence; image / `---` → end of line.
 
-### Link to a target — two ways
+### Link — wrap the source text with a ref
 
-- **Visible** (reader can click): a normal Markdown link to an *address*, with an
-  optional role comment:
-  ```markdown
-  Must satisfy [the privacy invariant](:privacy)<!--lmd:ref rel=invariant-->.
-  ```
-- **Invisible** (attach edges without touching prose):
-  ```markdown
-  Users sign up through a trusted path.
-  <!--lmd:rel impacts=:uc-join,:uc-approve parent=:capability-auth-->
-  ```
+A **ref** wraps a span of text and links it to **1..N anchors**, each with a
+relationship type. This is the only lmd link construct.
+
+```markdown
+Must satisfy <!--lmd:ref invariant=:privacy-->the privacy invariant<!--/lmd-->.
+
+Users sign up through <!--lmd:ref impacts=:uc-join,:uc-approve parent=:capability-auth-->a trusted path<!--/lmd-->.
+```
+
+- Open `<!--lmd:ref <targets>-->`, close `<!--/lmd-->`; the text between is the
+  visible source (plain text in a dumb renderer — the comments vanish).
+- `<targets>` = space-separated `[<role>=]<address>[,<address>…]`. A bare address
+  list defaults to role `related`. **Same syntax for 1 target or many.**
+- An anchor is only a target; it never holds links. A normal Markdown link
+  `[text](url)` is just a URL hyperlink and carries no lmd meaning.
 
 ### Address cheat-sheet
 
@@ -73,7 +78,6 @@ closing fence; image / `---` → end of line.
 | `alias:slug` | a target in an imported document |
 | `alias:slug@3` | …pinned to version 3 |
 | `kg://…` | an external knowledge-graph node |
-| `https://…`, `./x.md` | ordinary link (never an lmd edge) |
 
 ### Roles
 
@@ -116,10 +120,11 @@ built and checked.
 
 - **"Make this section linkable."** Add `<!--lmd:a <slug>-->` to its heading or
   block, then `lmd build` + `lmd check`.
-- **"Link section A to section B."** On A's block add
-  `<!--lmd:rel related=:b-slug-->` (or a visible link `[…](:b-slug)`), then build.
+- **"Link this text to section B."** Wrap the text:
+  `<!--lmd:ref :b-slug-->the text<!--/lmd-->`, then build. Add more targets by
+  listing them: `<!--lmd:ref :b,:c refines=:d-->…<!--/lmd-->`.
 - **"Connect this doc to another doc's section."** Add the other doc to `imports`,
-  reference `alias:their-slug`, then build.
+  wrap text with `<!--lmd:ref alias:their-slug-->…<!--/lmd-->`, then build.
 - **"Why is check failing?"** `dangling-local-ref` → the `:slug` has no anchor;
   `unknown-namespace` → the alias is not in `imports`; `duplicate-slug` → two
   anchors share a slug; `stale-manifest` → just run `lmd build`.

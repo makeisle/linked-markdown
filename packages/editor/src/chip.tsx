@@ -12,16 +12,16 @@ export function describeComment(raw: string): { icon: string; label: string; kin
   const anchor = raw.match(/<!--lmd:a\s+([a-z][a-z0-9-]*)(?:\s+rev=\d+)?\s*-->/);
   if (anchor) return { icon: "⚓", label: anchor[1], kind: "anchor" };
 
-  const ref = raw.match(/<!--lmd:ref\b([^>]*)-->/);
-  if (ref) {
-    const rel = ref[1].match(/\brel=([a-z_]+)/);
-    return { icon: "🔗", label: rel ? rel[1] : "ref", kind: "ref" };
-  }
+  if (/<!--\s*\/lmd\s*-->/.test(raw)) return { icon: "⟩", label: "", kind: "close" };
 
-  const rel = raw.match(/<!--lmd:rel\s+([^>]*)-->/);
-  if (rel) {
-    const roles = [...rel[1].matchAll(/([a-z_]+)=/g)].map((m) => m[1]);
-    return { icon: "↪", label: roles.join(" · ") || "rel", kind: "rel" };
+  // Ref opener: <!--lmd:ref [role=]addr,… …-->. Label with the roles, or the
+  // number of targets when they are untyped.
+  const ref = raw.match(/<!--lmd:ref\s+([^>]*?)\s*-->/);
+  if (ref) {
+    const roles = [...ref[1].matchAll(/([a-z_]+)=/g)].map((m) => m[1]);
+    const targets = (ref[1].match(/[:#][a-z0-9-]+/g) ?? []).length;
+    const label = roles.length ? roles.join(" · ") : `${targets} target${targets === 1 ? "" : "s"}`;
+    return { icon: "🔗", label, kind: "ref" };
   }
 
   return { icon: "•", label: raw, kind: "unknown" };

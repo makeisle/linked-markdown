@@ -81,24 +81,28 @@ export function SectionEditor({
       setComposer(null);
       return;
     }
-    // Group targets by relationship type: `<!--lmd:rel rel1=:a,:b rel2=:c-->`.
+    // Group targets by relationship type: `role1=:a,:b role2=:c`.
     const byRel = new Map<string, string[]>();
     for (const p of picks) {
       const list = byRel.get(p.rel) ?? [];
       list.push(`:${p.slug}`);
       byRel.set(p.rel, list);
     }
-    const raw = `<!--lmd:rel ${[...byRel].map(([r, ts]) => `${r}=${ts.join(",")}`).join(" ")}-->`;
+    const targets = [...byRel].map(([r, ts]) => `${r}=${ts.join(",")}`).join(" ");
+    // Wrap a source span: <!--lmd:ref targets-->text<!--/lmd-->. Insert a "link"
+    // placeholder and select it so the user types the source text over it.
+    const open = `<!--lmd:ref ${targets}-->`;
+    const placeholder = "link";
+    const raw = `${open}${placeholder}<!--/lmd-->`;
     const at = composer.at;
-    const next = draft.slice(0, at) + raw + draft.slice(at);
-    setDraft(next);
+    setDraft(draft.slice(0, at) + raw + draft.slice(at));
     setComposer(null);
-    // restore focus + caret after the inserted comment
     requestAnimationFrame(() => {
       const el = taRef.current;
       if (el) {
         el.focus();
-        el.selectionStart = el.selectionEnd = at + raw.length;
+        el.selectionStart = at + open.length;
+        el.selectionEnd = at + open.length + placeholder.length;
       }
     });
   }

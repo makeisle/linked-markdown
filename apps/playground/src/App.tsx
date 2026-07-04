@@ -54,6 +54,21 @@ function preview(md: string): string {
 
 const blockOf = (el: Element) => (el.closest("h1,h2,h3,h4,h5,h6,p,li") as HTMLElement) ?? (el as HTMLElement);
 
+/** Parse a ref's `data-lmd-targets` (`[role=]addr,… …`) into local targets. */
+function refTargets(s: string): { rel: string; slug: string }[] {
+  const out: { rel: string; slug: string }[] = [];
+  for (const item of s.split(/\s+/).filter(Boolean)) {
+    const eq = item.indexOf("=");
+    const rel = eq > 0 ? item.slice(0, eq) : "related";
+    for (const addr of (eq > 0 ? item.slice(eq + 1) : item).split(",")) {
+      if (!addr) continue;
+      const a = core.parseAddress(addr);
+      if (a.kind === "local") out.push({ rel, slug: a.slug });
+    }
+  }
+  return out;
+}
+
 function focusIn(root: HTMLElement | null, slug: string, smooth: boolean) {
   if (!root) return;
   root.querySelectorAll(".lmd-focus").forEach((e) => e.classList.remove("lmd-focus"));
@@ -111,26 +126,15 @@ export function App() {
       const list: LinkCard[] = [];
       let srcId = 0;
       let cardId = 0;
-      // Every source is either a visible link (one target) or an invisible
-      // relation span (possibly many targets). Each (source, target) is a card.
-      root?.querySelectorAll<HTMLElement>("a.lmd-ref, .lmd-relsrc").forEach((el) => {
-        const targets: { slug: string; rel: string }[] = [];
-        if (el.matches("a.lmd-ref")) {
-          const t = core.parseAddress(el.dataset.lmdTarget ?? "");
-          if (t.kind === "local" && colorOf.has(t.slug)) {
-            el.classList.add(`lc-${colorOf.get(t.slug)}`);
-            targets.push({ slug: t.slug, rel: "related" });
-          }
-        } else {
-          const inner = el.getAttribute("data-lmd-rel") ?? "";
-          for (const m of inner.matchAll(/([a-z_]+)=([^\s]+)/g)) {
-            for (const addr of m[2].split(",")) {
-              const t = core.parseAddress(addr);
-              if (t.kind === "local" && colorOf.has(t.slug)) targets.push({ slug: t.slug, rel: m[1] });
-            }
-          }
-        }
-        if (collect && targets.length) {
+      // Each ref span links its text to 1..N typed anchors → one card per target.
+      root?.querySelectorAll<HTMLElement>(".lmd-ref").forEach((el) => {
+        const targets = refTargets(el.getAttribute("data-lmd-targets") ?? "").filter((t) =>
+          colorOf.has(t.slug),
+        );
+        if (!targets.length) return;
+        // A single-target ref is coloured by its target; a fan-out stays neutral.
+        el.classList.add(targets.length === 1 ? `lc-${colorOf.get(targets[0].slug)}` : "lc-multi");
+        if (collect) {
           el.dataset.srcId = String(srcId);
           for (const t of targets) list.push({ id: cardId++, srcId, slug: t.slug, rel: t.rel });
         }
@@ -298,11 +302,11 @@ export function App() {
     scrollTo(ns[ns.length - 1]);
   }
   function onCenterClick(e: React.MouseEvent) {
-    const a = (e.target as HTMLElement).closest("a.lmd-ref") as HTMLAnchorElement | null;
-    if (!a) return;
+    const el = (e.target as HTMLElement).closest(".lmd-ref") as HTMLElement | null;
+    if (!el) return;
     e.preventDefault();
-    const addr = core.parseAddress(a.dataset.lmdTarget ?? "");
-    if (addr.kind === "local") goto(addr.slug);
+    const first = refTargets(el.getAttribute("data-lmd-targets") ?? "")[0];
+    if (first) goto(first.slug);
   }
 
   if (error) return <div className="fatal">⚠ {error}</div>;

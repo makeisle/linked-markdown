@@ -6,7 +6,7 @@
   "patterns": [
     { "include": "#lmd-anchor" },
     { "include": "#lmd-ref" },
-    { "include": "#lmd-rel" },
+    { "include": "#lmd-ref-close" },
     { "include": "#lmd-manifest" },
     { "include": "text.html.markdown" }
   ],
@@ -24,7 +24,7 @@
     },
     "lmd-ref": {
       "name": "meta.lmd.ref",
-      "match": "(<!--)\\s*(lmd:ref)\\b([^>]*?)\\s*(-->)",
+      "match": "(<!--)\\s*(lmd:ref)\\s+([^>]*?)\\s*(-->)",
       "captures": {
         "1": { "name": "punctuation.definition.comment.lmd" },
         "2": { "name": "keyword.control.lmd.ref" },
@@ -32,14 +32,13 @@
         "4": { "name": "punctuation.definition.comment.lmd" }
       }
     },
-    "lmd-rel": {
-      "name": "meta.lmd.rel",
-      "match": "(<!--)\\s*(lmd:rel)\\s+([^>]*?)\\s*(-->)",
+    "lmd-ref-close": {
+      "name": "meta.lmd.ref.close",
+      "match": "(<!--)\\s*(/lmd)\\s*(-->)",
       "captures": {
         "1": { "name": "punctuation.definition.comment.lmd" },
-        "2": { "name": "keyword.control.lmd.rel" },
-        "3": { "name": "variable.parameter.lmd" },
-        "4": { "name": "punctuation.definition.comment.lmd" }
+        "2": { "name": "keyword.control.lmd.ref.close" },
+        "3": { "name": "punctuation.definition.comment.lmd" }
       }
     },
     "lmd-manifest": {

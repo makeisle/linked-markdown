@@ -6,9 +6,8 @@ import { parseLmdBody, serializeLmdBody } from "../src/markdown.js";
 const BODY = [
   "## Authentication <!--lmd:a auth-->",
   "",
-  "A member signs up. See [the policy](policy:perf@2)<!--lmd:ref rel=policy-->.",
-  "",
-  "<!--lmd:rel impacts=:uc-join,:uc-approve-->",
+  "A member signs up under <!--lmd:ref policy=policy:perf@2-->the policy<!--/lmd-->,",
+  "which <!--lmd:ref impacts=:uc-join,:uc-approve-->touches join and approve<!--/lmd-->.",
   "",
   "- First item <!--lmd:a item-one-->",
   "- Second item",
@@ -29,8 +28,9 @@ test("every escape comment and lmd address survives the round-trip", () => {
   const out = serializeLmdBody(parseLmdBody(BODY));
   for (const fragment of [
     "<!--lmd:a auth-->",
-    "<!--lmd:ref rel=policy-->",
-    "<!--lmd:rel impacts=:uc-join,:uc-approve-->",
+    "<!--lmd:ref policy=policy:perf@2-->",
+    "<!--lmd:ref impacts=:uc-join,:uc-approve-->",
+    "<!--/lmd-->",
     "<!--lmd:a item-one-->",
     "policy:perf@2",
   ]) {

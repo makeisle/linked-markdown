@@ -45,34 +45,32 @@ Put `<!--lmd:a <slug>-->` at the end of the block:
 `slug`s are your human-friendly handles. They must be unique in the document and
 look like `lower-kebab-case`.
 
-## Linking to a target
+## Linking — wrap the source text with a ref
 
-### A link the reader can click
-
-Just write a normal Markdown link whose URL is an *address*:
-
-```markdown
-See [authentication](:auth) for details.
-```
-
-`:auth` means "the `auth` anchor in this document". To add a role, follow the
-link with a ref comment:
+A **ref** wraps a span of text and links it to one or more anchors. Open with
+`<!--lmd:ref <targets>-->`, close with `<!--/lmd-->`:
 
 ```markdown
-This must satisfy [the privacy invariant](:privacy)<!--lmd:ref rel=invariant-->.
+See <!--lmd:ref :auth-->authentication<!--/lmd--> for details.
 ```
 
-### An invisible, semantic link
+`:auth` means "the `auth` anchor in this document". In a plain Markdown renderer
+the comments vanish and you just read "authentication" — but it is a link.
 
-When you don't want to change the prose, attach edges to the block directly:
+Give each target a role, and list as many targets as you like — **the syntax is
+the same whether there is 1 or many**:
 
 ```markdown
-Users sign up through a trusted path.
-<!--lmd:rel impacts=:uc-join,:uc-approve parent=:capability-auth-->
+This must satisfy <!--lmd:ref invariant=:privacy-->the privacy invariant<!--/lmd-->.
+
+Users sign up through <!--lmd:ref impacts=:uc-join,:uc-approve parent=:capability-auth-->a trusted path<!--/lmd-->.
 ```
 
-This adds three typed edges (`impacts`, `impacts`, `parent`) from the current
-block — without altering a single visible character.
+The second ref adds three typed edges (`impacts`, `impacts`, `parent`) from one
+span. A bare address list (no `role=`) uses the default role `related`.
+
+> An anchor is only a target — it never holds links. A normal Markdown link
+> `[text](url)` is just a URL hyperlink and has no lmd meaning.
 
 ## Linking across documents
 
@@ -88,7 +86,7 @@ imports:
   design: { id: 0192f3a1-…-design001, pin: "@7" }
 ---
 
-The flow is specified by [use case: join](design:uc-join).
+The flow is <!--lmd:ref design:uc-join-->specified elsewhere<!--/lmd-->.
 ```
 
 `design:uc-join` resolves through the `design` import to version 7 of that
@@ -106,7 +104,8 @@ document. Pin a specific version inline with `@`: `design:uc-join@5`.
 
 ## Relationship roles
 
-`<!--lmd:rel-->` and `<!--lmd:ref rel=…-->` take a role. The standard set:
+Each target in a ref may carry a role (`<!--lmd:ref role=:target-->…<!--/lmd-->`).
+The standard set:
 
 `source`, `parent`, `child`, `impacts`, `impacted_by`, `invariant`, `policy`,
 `decided_by`, `approved_by`, `related`, `see_also`.

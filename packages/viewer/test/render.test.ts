@@ -8,10 +8,9 @@ const doc: Doc = {
   body: [
     "## Authentication <!--lmd:a auth-->",
     "",
-    "A member signs up. See [the section](:auth)<!--lmd:ref rel=related-->.",
-    "<!--lmd:rel impacts=:auth-->",
+    "A member signs up; <!--lmd:ref impacts=:auth related=:auth-->this section<!--/lmd--> matters.",
     "",
-    "External [link](https://example.com) must not be tagged.",
+    "A plain [markdown link](https://example.com) is not an lmd link.",
   ].join("\n"),
   manifest: {
     schema: 1,
@@ -31,18 +30,19 @@ test("anchors become locatable spans", () => {
   assert.match(html, /data-lmd-anchor="auth"/);
 });
 
-test("lmd refs are tagged, external links are not", () => {
+test("a ref wraps its source text and carries its targets", () => {
   const { html } = renderToHtml(doc);
-  assert.match(html, /class="lmd-ref"[^>]*data-lmd-target=":auth"|data-lmd-target=":auth"/);
-  // The external link is a plain anchor without the lmd-ref class.
+  assert.match(html, /class="lmd-ref"[^>]*data-lmd-targets="impacts=:auth related=:auth"/);
+  assert.match(html, /class="lmd-ref"[^>]*>this section<\/span>/);
+  // A plain markdown link stays a plain anchor, not an lmd ref.
   assert.match(html, /href="https:\/\/example\.com"/);
   assert.doesNotMatch(html, /lmd-ref[^>]*example\.com/);
 });
 
 test("escape comments leave no visible residue", () => {
   const { html } = renderToHtml(doc);
-  assert.doesNotMatch(html, /lmd:rel/);
   assert.doesNotMatch(html, /lmd:ref/);
+  assert.doesNotMatch(html, /\/lmd--/);
 });
 
 test("backlinks are computed per target slug", () => {

@@ -7,7 +7,5 @@ title: Dangling references
 
 ## Intro <!--lmd:a intro-->
 
-This block points at a missing local anchor and an undeclared namespace.
-<!--lmd:rel related=:nope-->
-
-See also [ghost](ghost:thing).
+This block links to <!--lmd:ref :nope-->a missing anchor<!--/lmd--> and to
+<!--lmd:ref ghost:thing-->an undeclared namespace<!--/lmd-->.

@@ -31,8 +31,8 @@ export interface RenderResult {
 }
 
 const RE_ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)(?:\s+rev=\d+)?\s*-->/g;
-const RE_REL = /<!--lmd:rel\s+(.*?)\s*-->/g;
-const RE_REF = /<!--lmd:ref\b.*?-->/g;
+// A ref wraps its source text: <!--lmd:ref targets-->text<!--/lmd-->.
+const RE_REF = /<!--lmd:ref\s+([\s\S]*?)\s*-->([\s\S]*?)<!--\s*\/lmd\s*-->/g;
 
 function escapeAttr(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -46,34 +46,18 @@ function preprocess(body: string): string {
       (_m, slug: string) =>
         `<span class="lmd-anchor" id="lmd-${escapeAttr(slug)}" data-lmd-anchor="${escapeAttr(slug)}"></span>`,
     )
-    // An invisible relation marks its source position so an overlay can draw
-    // connectors; keep the raw `role=target,…` pairs on a data attribute.
+    // A ref becomes a styled link over its source text, carrying its raw
+    // `[role=]target,…` list so the overlay can draw one connector per target.
     .replace(
-      RE_REL,
-      (_m, inner: string) => `<span class="lmd-relsrc" data-lmd-rel="${escapeAttr(inner.trim())}"></span>`,
-    )
-    // A ref only annotates the visible link that precedes it; drop it.
-    .replace(RE_REF, "");
+      RE_REF,
+      (_m, targets: string, text: string) =>
+        `<span class="lmd-ref" data-lmd-targets="${escapeAttr(targets.trim())}">${text.trim()}</span>`,
+    );
 }
 
 function makeMarkdown(): MarkdownIt {
-  const md = new MarkdownIt({ html: true, linkify: false });
-
-  // Tag links whose target is an lmd address so the overlay can wire popovers.
-  const defaultLinkOpen =
-    md.renderer.rules.link_open ??
-    ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
-
-  md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
-    const href = tokens[idx].attrGet("href");
-    if (href && parseAddress(href).kind !== "external") {
-      tokens[idx].attrJoin("class", "lmd-ref");
-      tokens[idx].attrSet("data-lmd-target", href);
-    }
-    return defaultLinkOpen(tokens, idx, options, env, self);
-  };
-
-  return md;
+  // `html: true` lets the injected anchor/ref markup pass through.
+  return new MarkdownIt({ html: true, linkify: false });
 }
 
 /** Render a document and compute its overlay. */

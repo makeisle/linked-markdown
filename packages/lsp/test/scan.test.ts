@@ -15,8 +15,7 @@ const DOC = [
   "",
   "## Authentication <!--lmd:a auth-->",
   "",
-  "See [the section](:auth) and [a use case](design:uc-join).",
-  "<!--lmd:rel impacts=design:uc-join-->",
+  "See <!--lmd:ref :auth impacts=design:uc-join,design:uc-join-->this section<!--/lmd-->.",
 ].join("\n");
 
 test("scan finds anchors with ranges", () => {

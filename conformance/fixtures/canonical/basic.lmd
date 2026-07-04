@@ -11,7 +11,6 @@ imports:
 
 ## Membership authentication <!--lmd:a cap-auth-->
 
-A member signs up and logs in through a trusted path.
-<!--lmd:rel impacts=design:uc-join-->
-
-Latency follows the [performance policy](design:perf@2)<!--lmd:ref rel=policy-->.
+A member signs up through a trusted path;
+<!--lmd:ref impacts=design:uc-join-->this flow<!--/lmd--> is what matters, and it
+follows <!--lmd:ref policy=design:perf@2-->the performance policy<!--/lmd-->.

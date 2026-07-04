@@ -55,7 +55,7 @@ pub fn format_str(input: &str) -> Result<String> {
 mod tests {
     use super::*;
 
-    const SAMPLE: &str = "---\nlmd: 1\nid: 0192f3a1-doc\nversion: 3\ntitle: Sample\nimports:\n  design:\n    id: 0192f3a1-design\n    pin: '@7'\n---\n\n## 회원 인증 <!--lmd:a cap-auth-->\n\n본문 텍스트.\n<!--lmd:rel impacts=design:uc-join-->\n\n[정책](design:perf@2)<!--lmd:ref rel=policy-->\n";
+    const SAMPLE: &str = "---\nlmd: 1\nid: 0192f3a1-doc\nversion: 3\ntitle: Sample\nimports:\n  design:\n    id: 0192f3a1-design\n    pin: '@7'\n---\n\n## 회원 인증 <!--lmd:a cap-auth-->\n\n<!--lmd:ref impacts=design:uc-join-->본문<!--/lmd--> 텍스트, <!--lmd:ref policy=design:perf@2-->정책<!--/lmd-->.\n";
 
     fn deterministic_build(doc: &Doc) -> Manifest {
         let mut n = 0;
@@ -103,7 +103,7 @@ mod tests {
 
     #[test]
     fn check_flags_dangling_and_unknown() {
-        let src = "---\nlmd: 1\nid: d\nversion: 1\ntitle: T\n---\n\n## A <!--lmd:a a-->\n<!--lmd:rel related=:nope-->\n\n[x](ghost:thing)\n";
+        let src = "---\nlmd: 1\nid: d\nversion: 1\ntitle: T\n---\n\n## A <!--lmd:a a-->\n\n<!--lmd:ref :nope-->x<!--/lmd--> and <!--lmd:ref ghost:thing-->y<!--/lmd-->\n";
         let doc = parse(src).unwrap();
         let diags = check(&doc);
         assert!(diags.iter().any(|d| d.code == "dangling-local-ref"));

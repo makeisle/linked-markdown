@@ -1,9 +1,13 @@
 //! Body scanner: extracts anchors and edges from the verbatim Markdown body.
 //!
 //! This is deliberately not a full Markdown AST. lmd-core's job is to maintain
-//! the *link graph*, not to re-render prose, so the scanner walks the body
-//! line-by-line (tracking fenced-code state) and pulls out the three escape-tag
-//! kinds plus the visible Markdown links that point at lmd addresses.
+//! the *link graph*, so the scanner walks the body line-by-line (tracking
+//! fenced-code state) and pulls out the two escape-tag constructs:
+//!
+//! - an **anchor** `<!--lmd:a slug-->` marks a linkable target;
+//! - a **ref** `<!--lmd:ref <targets>-->source text<!--/lmd-->` links its wrapped
+//!   text to 1..N typed anchors. Only the opening tag matters for the graph; the
+//!   `<!--/lmd-->` close just delimits the visible source text.
 
 use crate::address::{parse_address, Address};
 use crate::model::NodeKind;
@@ -12,11 +16,8 @@ use regex::Regex;
 
 static RE_ANCHOR: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"<!--lmd:a\s+([a-z][a-z0-9-]*)(?:\s+rev=(\d+))?\s*-->").unwrap());
-static RE_REL: Lazy<Regex> = Lazy::new(|| Regex::new(r"<!--lmd:rel\s+(.*?)\s*-->").unwrap());
-static RE_REF: Lazy<Regex> = Lazy::new(|| Regex::new(r"<!--lmd:ref\b(.*?)-->").unwrap());
-static RE_LINK: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[[^\]]*\]\(([^)\s]+)\)").unwrap());
-static RE_REL_PAIR: Lazy<Regex> = Lazy::new(|| Regex::new(r"([a-z_]+)=([^\s]+)").unwrap());
-static RE_REF_REL: Lazy<Regex> = Lazy::new(|| Regex::new(r"\brel=([a-z_]+)").unwrap());
+static RE_REF_OPEN: Lazy<Regex> = Lazy::new(|| Regex::new(r"<!--lmd:ref\s+(.*?)\s*-->").unwrap());
+static RE_REF_CLOSE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<!--\s*/lmd\s*-->").unwrap());
 
 /// An `<!--lmd:a slug-->` anchor and the block it tags.
 #[derive(Debug, Clone, PartialEq)]
@@ -30,7 +31,7 @@ pub struct Anchor {
 }
 
 /// A raw outbound edge before resolution. `from` is the nearest preceding anchor
-/// slug, or `None` if the tag appeared before any anchor (a diagnostic).
+/// slug, or `None` if the ref appeared before any anchor (a diagnostic).
 #[derive(Debug, Clone, PartialEq)]
 pub struct RawEdge {
     pub from: Option<String>,
@@ -46,12 +47,29 @@ pub struct Scan {
 }
 
 fn strip_comments(line: &str) -> String {
-    // Remove any lmd escape comment so only the visible text remains.
     let mut out = line.to_string();
-    for re in [&*RE_ANCHOR, &*RE_REL, &*RE_REF] {
+    for re in [&*RE_ANCHOR, &*RE_REF_OPEN, &*RE_REF_CLOSE] {
         out = re.replace_all(&out, "").to_string();
     }
     out.trim().to_string()
+}
+
+/// Parse a ref's `<targets>`: whitespace-separated items, each
+/// `[role=]addr[,addr…]`. A bare address list takes the default role `related`.
+fn parse_targets(s: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for item in s.split_whitespace() {
+        let (role, addrs) = match item.split_once('=') {
+            Some((r, a)) => (r.to_string(), a),
+            None => ("related".to_string(), item),
+        };
+        for addr in addrs.split(',') {
+            if !addr.is_empty() {
+                out.push((role.clone(), addr.to_string()));
+            }
+        }
+    }
+    out
 }
 
 fn classify(line: &str, prev_was_fence_close: bool) -> NodeKind {
@@ -88,7 +106,6 @@ fn is_list_item(t: &str) -> bool {
     if let Some(rest) = t.strip_prefix(['-', '*', '+']) {
         return rest.starts_with(' ');
     }
-    // ordered: digits then '.'
     let digits: String = t.chars().take_while(|c| c.is_ascii_digit()).collect();
     !digits.is_empty() && t[digits.len()..].starts_with(". ")
 }
@@ -106,17 +123,10 @@ pub fn scan(body: &str) -> Scan {
         let is_fence = trimmed.starts_with("```") || trimmed.starts_with("~~~");
 
         if is_fence {
-            if in_fence {
-                in_fence = false;
-                prev_fence_close = true;
-                continue;
-            } else {
-                in_fence = true;
-                prev_fence_close = false;
-                continue;
-            }
+            in_fence = !in_fence;
+            prev_fence_close = !in_fence;
+            continue;
         }
-
         if in_fence {
             prev_fence_close = false;
             continue;
@@ -140,40 +150,17 @@ pub fn scan(body: &str) -> Scan {
             last_slug = Some(slug);
         }
 
-        // Invisible semantic links: <!--lmd:rel role=addr,addr role2=addr-->.
-        if let Some(cap) = RE_REL.captures(line) {
-            for pair in RE_REL_PAIR.captures_iter(&cap[1]) {
-                let role = pair[1].to_string();
-                for addr in pair[2].split(',') {
-                    let addr = addr.trim();
-                    if addr.is_empty() {
-                        continue;
-                    }
+        // Ref(s): each opening tag lists 1..N typed targets.
+        for cap in RE_REF_OPEN.captures_iter(line) {
+            for (rel, addr) in parse_targets(&cap[1]) {
+                if !matches!(parse_address(&addr), Address::External(_)) {
                     out.edges.push(RawEdge {
                         from: last_slug.clone(),
-                        rel: role.clone(),
-                        to: addr.to_string(),
+                        rel,
+                        to: addr,
                         line: line_no,
                     });
                 }
-            }
-        }
-
-        // Visible refs: a Markdown link whose target is an lmd address, with an
-        // optional trailing <!--lmd:ref rel=…--> to override the role.
-        let ref_rel = RE_REF
-            .captures(line)
-            .and_then(|c| RE_REF_REL.captures(&c[1]).map(|m| m[1].to_string()))
-            .unwrap_or_else(|| "related".to_string());
-        for link in RE_LINK.captures_iter(line) {
-            let target = link[1].to_string();
-            if !matches!(parse_address(&target), Address::External(_)) {
-                out.edges.push(RawEdge {
-                    from: last_slug.clone(),
-                    rel: ref_rel.clone(),
-                    to: target,
-                    line: line_no,
-                });
             }
         }
 
@@ -188,18 +175,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn extracts_anchor_and_edges() {
-        let body = "## 회원 인증 <!--lmd:a cap-auth-->\n\n본문.\n<!--lmd:rel parent=:s2b impacts=design:uc-join,design:uc-approve-->\n\n[정책](policy:perf@2)<!--lmd:ref rel=policy-->";
+    fn extracts_anchor_and_ref_targets() {
+        let body = "## 회원 인증 <!--lmd:a cap-auth-->\n\n본문 <!--lmd:ref parent=:s2b impacts=design:uc-join,design:uc-approve-->핵심<!--/lmd--> 문장.\n\n<!--lmd:ref policy=design:perf@2-->정책<!--/lmd-->";
         let s = scan(body);
         assert_eq!(s.anchors.len(), 1);
         assert_eq!(s.anchors[0].slug, "cap-auth");
         assert_eq!(s.anchors[0].kind, NodeKind::Heading);
-        // parent + 2 impacts + 1 policy ref
+        // parent + 2 impacts + 1 policy
         assert_eq!(s.edges.len(), 4);
         assert!(s
             .edges
             .iter()
-            .any(|e| e.rel == "policy" && e.to == "policy:perf@2"));
+            .any(|e| e.rel == "policy" && e.to == "design:perf@2"));
         assert_eq!(s.edges.iter().filter(|e| e.rel == "impacts").count(), 2);
+        assert!(s
+            .edges
+            .iter()
+            .all(|e| e.from.as_deref() == Some("cap-auth")));
+    }
+
+    #[test]
+    fn bare_address_list_defaults_to_related() {
+        let s = scan("## A <!--lmd:a a-->\n<!--lmd:ref :x,:y-->text<!--/lmd-->");
+        assert_eq!(s.edges.len(), 2);
+        assert!(s.edges.iter().all(|e| e.rel == "related"));
     }
 }
