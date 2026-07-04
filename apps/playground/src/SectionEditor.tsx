@@ -23,6 +23,28 @@ interface Pick {
   rel: string;
 }
 
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Wrap anchors (teal) and whole refs (sand) in coloured spans for the editor's
+// syntax-highlight backdrop. Everything else is escaped plain text.
+const RE_TOKEN = /(<!--lmd:a\s[^>]*?-->)|(<!--lmd:ref\s[\s\S]*?<!--\s*\/lmd\s*-->)/g;
+function highlight(text: string): string {
+  let out = "";
+  let last = 0;
+  let m: RegExpExecArray | null;
+  RE_TOKEN.lastIndex = 0;
+  while ((m = RE_TOKEN.exec(text))) {
+    out += esc(text.slice(last, m.index));
+    const cls = m[1] ? "hl-anchor" : "hl-ref";
+    out += `<span class="${cls}">${esc(m[0])}</span>`;
+    last = m.index + m[0].length;
+  }
+  out += esc(text.slice(last));
+  return out + "\n"; // trailing newline keeps the backdrop height in sync
+}
+
 /**
  * A plain raw-Markdown editor for one section. The only thing beyond a textarea
  * is the connection composer: typing `@` opens a search UI to pick one or more
@@ -45,6 +67,7 @@ export function SectionEditor({
   const [query, setQuery] = useState("");
   const [picks, setPicks] = useState<Pick[]>([]);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const hlRef = useRef<HTMLDivElement>(null);
 
   function onChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const el = e.target;
@@ -124,12 +147,20 @@ export function SectionEditor({
       </div>
 
       <div className="editor__area">
+        <div className="editor__hl" ref={hlRef} aria-hidden dangerouslySetInnerHTML={{ __html: highlight(draft) }} />
         <textarea
           ref={taRef}
           className="editor__ta"
           value={draft}
           spellCheck={false}
           onChange={onChange}
+          onScroll={(e) => {
+            const hl = hlRef.current;
+            if (hl) {
+              hl.scrollTop = e.currentTarget.scrollTop;
+              hl.scrollLeft = e.currentTarget.scrollLeft;
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === "Escape" && composer) {
               e.preventDefault();
