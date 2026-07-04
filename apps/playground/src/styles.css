@@ -303,3 +303,11 @@ body {
 .card[data-dir="mid"] .needle { top: 50%; transform: translateY(-50%); }
 .card[data-dir="up"] .needle { top: 9px; transform: rotate(-26deg); }
 .card[data-dir="down"] .needle { bottom: 9px; transform: rotate(26deg); }
+
+/* dynamic leader lines (SVG) connecting cards to their source links */
+.cols { position: relative; }
+.wires {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: visible; z-index: 30;
+}
+.wires path { stroke-linecap: round; }

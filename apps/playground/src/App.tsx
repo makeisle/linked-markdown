@@ -20,6 +20,7 @@ const ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/;
 const ANCHOR_G = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/g;
 const FM: core.Frontmatter = { lmd: 1, id: "demo", version: 1, title: "Demo" };
 const PALETTE = 4;
+const PALETTE_HEX = ["#7c9cff", "#5fd6a6", "#f2b45e", "#e78bd0"];
 
 function splitSections(body: string): Section[] {
   const lines = body.split("\n");
@@ -74,6 +75,7 @@ export function App() {
   const centerRef = useRef<HTMLDivElement>(null);
   const prevRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const wiresRef = useRef<SVGSVGElement>(null);
   const cardRefs = useRef(new Map<number, HTMLButtonElement | null>());
 
   const focusRef = useRef<string | null>(null);
@@ -125,7 +127,7 @@ export function App() {
     if (!canvas || !root) return;
     const cRect = canvas.getBoundingClientRect();
     const midY = cRect.height / 2;
-    const visible: { el: HTMLButtonElement; srcY: number; h: number }[] = [];
+    const visible: { el: HTMLButtonElement; src: HTMLElement; slug: string; srcY: number; h: number }[] = [];
     for (const card of linkCardsRef.current) {
       const el = cardRefs.current.get(card.id);
       if (!el) continue;
@@ -141,7 +143,7 @@ export function App() {
         continue;
       }
       el.style.display = "";
-      visible.push({ el, srcY, h: el.offsetHeight || 58 });
+      visible.push({ el, src, slug: card.slug, srcY, h: el.offsetHeight || 58 });
     }
     visible.sort((a, b) => a.srcY - b.srcY);
     const gap = 8;
@@ -151,11 +153,37 @@ export function App() {
       if (top < prevBottom + gap) top = prevBottom + gap;
       top = Math.max(4, Math.min(top, cRect.height - it.h - 4));
       prevBottom = top + it.h;
-      const cc = top + it.h / 2;
       it.el.style.top = `${top}px`;
-      it.el.dataset.dir = it.srcY < cc - 5 ? "up" : it.srcY > cc + 5 ? "down" : "mid";
-      it.el.style.opacity = String(Math.max(0.4, 1 - (Math.abs(cc - midY) / midY) * 0.7));
+      it.el.style.opacity = String(Math.max(0.4, 1 - (Math.abs(top + it.h / 2 - midY) / midY) * 0.7));
     }
+    drawWires(visible);
+  };
+
+  // Draw a leader line from each card to its source link's height on the
+  // document's right edge. Purely visual, redrawn on every layout/scroll.
+  const drawWires = (visible: { el: HTMLButtonElement; src: HTMLElement; slug: string }[]) => {
+    const svg = wiresRef.current;
+    const pane = centerScroll.current;
+    if (!svg || !pane) return;
+    const sr = svg.getBoundingClientRect();
+    const pr = pane.getBoundingClientRect();
+    const parts: string[] = [];
+    for (const it of visible) {
+      const lr = it.src.getBoundingClientRect();
+      const sy = Math.max(pr.top + 6, Math.min(lr.top + lr.height / 2, pr.bottom - 6)) - sr.top;
+      const sx = pr.right - sr.left;
+      const cr = it.el.getBoundingClientRect();
+      const tx = cr.left - sr.left;
+      const ty = cr.top + cr.height / 2 - sr.top;
+      const col = PALETTE_HEX[colorRef.current.get(it.slug) ?? 0];
+      const dx = Math.max(24, (tx - sx) * 0.5);
+      const op = it.el.style.opacity || "1";
+      parts.push(
+        `<path d="M ${sx} ${sy} C ${sx + dx} ${sy}, ${tx - dx} ${ty}, ${tx} ${ty}" fill="none" stroke="${col}" stroke-width="1.6" opacity="${op}"/>`,
+        `<circle cx="${sx}" cy="${sy}" r="3" fill="${col}" opacity="${op}"/>`,
+      );
+    }
+    svg.innerHTML = parts.join("");
   };
 
   const computeFocus = () => {
@@ -260,6 +288,7 @@ export function App() {
       </header>
 
       <main className="cols cols--3">
+        <svg className="wires" ref={wiresRef} aria-hidden />
         <section className="col col--prev">
           <div className="col__label">Previous</div>
           {prevSlug ? (
@@ -321,7 +350,6 @@ export function App() {
                   style={{ display: "none" }}
                   onClick={() => goto(card.slug)}
                 >
-                  <span className="needle" aria-hidden />
                   <span className="card__title">{sec?.title ?? card.slug}</span>
                   <span className="card__preview">{sec ? preview(sec.md) : ""}</span>
                 </button>
