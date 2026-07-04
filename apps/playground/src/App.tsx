@@ -16,6 +16,8 @@ interface LinkCard {
   srcId: number;
   slug: string;
   rel: string;
+  /** Palette index of the source ref — shared by its text, cards and wires. */
+  color: number;
 }
 
 const ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/;
@@ -100,7 +102,6 @@ export function App() {
   const focusRef = useRef<string | null>(null);
   const sectionsRef = useRef<Section[]>([]);
   const linkCardsRef = useRef<LinkCard[]>([]);
-  const colorRef = useRef(new Map<string, number>());
 
   useEffect(() => {
     core.init(wasmUrl).then(() => setReady(true)).catch((e) => setError(String(e)));
@@ -109,42 +110,36 @@ export function App() {
   const sections = useMemo(() => splitSections(body), [body]);
   const bySlug = useMemo(() => new Map(sections.map((s) => [s.slug, s])), [sections]);
   const docHtml = useMemo(() => renderToHtml({ frontmatter: FM, body }).html, [body]);
-  const colorOf = useMemo(() => {
-    const m = new Map<string, number>();
-    sections.forEach((s, i) => m.set(s.slug, i % PALETTE));
-    return m;
-  }, [sections]);
 
   sectionsRef.current = sections;
   linkCardsRef.current = linkCards;
-  colorRef.current = colorOf;
 
-  // Tag + colour every link in both panes; collect the full card list (all links).
+  // Colour every ref by its own palette index — the ref's text, its card(s) and
+  // its wire(s) all share that colour. Collect one card per (ref, target).
   useEffect(() => {
     if (!ready) return;
     const paint = (root: HTMLElement | null, collect: boolean) => {
       const list: LinkCard[] = [];
-      let srcId = 0;
+      let idx = 0; // index among refs with local targets → the ref's colour
       let cardId = 0;
-      // Each ref span links its text to 1..N typed anchors → one card per target.
       root?.querySelectorAll<HTMLElement>(".lmd-ref").forEach((el) => {
         const targets = refTargets(el.getAttribute("data-lmd-targets") ?? "").filter((t) =>
-          colorOf.has(t.slug),
+          bySlug.has(t.slug),
         );
         if (!targets.length) return;
-        // A single-target ref is coloured by its target; a fan-out stays neutral.
-        el.classList.add(targets.length === 1 ? `lc-${colorOf.get(targets[0].slug)}` : "lc-multi");
+        const color = idx % PALETTE;
+        el.classList.add(`lc-${color}`);
         if (collect) {
-          el.dataset.srcId = String(srcId);
-          for (const t of targets) list.push({ id: cardId++, srcId, slug: t.slug, rel: t.rel });
+          el.dataset.srcId = String(idx);
+          for (const t of targets) list.push({ id: cardId++, srcId: idx, slug: t.slug, rel: t.rel, color });
         }
-        srcId++;
+        idx++;
       });
       return list;
     };
     setLinkCards(paint(centerRef.current, true));
     paint(prevRef.current, false);
-  }, [ready, docHtml, colorOf, editing]);
+  }, [ready, docHtml, bySlug, editing]);
 
   const layoutCards = () => {
     const canvas = canvasRef.current;
@@ -152,7 +147,7 @@ export function App() {
     if (!canvas || !root) return;
     const cRect = canvas.getBoundingClientRect();
     const midY = cRect.height / 2;
-    const visible: { el: HTMLButtonElement; src: HTMLElement; slug: string; srcY: number; h: number }[] = [];
+    const visible: { el: HTMLButtonElement; src: HTMLElement; color: number; srcY: number; h: number }[] = [];
     for (const card of linkCardsRef.current) {
       const el = cardRefs.current.get(card.id);
       if (!el) continue;
@@ -168,7 +163,7 @@ export function App() {
         continue;
       }
       el.style.display = "";
-      visible.push({ el, src, slug: card.slug, srcY, h: el.offsetHeight || 58 });
+      visible.push({ el, src, color: card.color, srcY, h: el.offsetHeight || 58 });
     }
     visible.sort((a, b) => a.srcY - b.srcY);
     const gap = 8;
@@ -186,7 +181,7 @@ export function App() {
 
   // Draw a leader line from each card to its source link's height on the
   // document's right edge. Purely visual, redrawn on every layout/scroll.
-  const drawWires = (visible: { el: HTMLButtonElement; src: HTMLElement; slug: string }[]) => {
+  const drawWires = (visible: { el: HTMLButtonElement; src: HTMLElement; color: number }[]) => {
     const svg = wiresRef.current;
     const pane = centerScroll.current;
     if (!svg || !pane) return;
@@ -200,7 +195,7 @@ export function App() {
       const cr = it.el.getBoundingClientRect();
       const tx = cr.left - sr.left;
       const ty = cr.top + cr.height / 2 - sr.top;
-      const col = PALETTE_HEX[colorRef.current.get(it.slug) ?? 0];
+      const col = PALETTE_HEX[it.color] ?? PALETTE_HEX[0];
       const dx = Math.max(24, (tx - sx) * 0.5);
       const op = it.el.style.opacity || "1";
       parts.push(
@@ -387,12 +382,11 @@ export function App() {
           <div className="cards-canvas" ref={canvasRef}>
             {linkCards.map((card) => {
               const sec = bySlug.get(card.slug);
-              const ci = colorOf.get(card.slug) ?? 0;
               return (
                 <button
                   key={card.id}
                   ref={(el) => cardRefs.current.set(card.id, el)}
-                  className={`card lc-${ci}`}
+                  className={`card lc-${card.color}`}
                   data-dir="mid"
                   style={{ display: "none" }}
                   onClick={() => goto(card.slug)}
