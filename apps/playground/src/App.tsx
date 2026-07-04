@@ -4,7 +4,7 @@ import * as React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import wasmUrl from "@lmd/core/pkg/lmd_wasm_bg.wasm?url";
 import { DEMO } from "./demo.js";
-import { SectionEditor } from "./SectionEditor.js";
+import { EditorShell } from "./EditorShell.js";
 
 interface Section {
   slug: string;
@@ -22,7 +22,18 @@ interface LinkCard {
 
 const ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/;
 const ANCHOR_G = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/g;
-const FM: core.Frontmatter = { lmd: 1, id: "demo", version: 1, title: "Demo" };
+// Import table: alias → { id (durable UUID), path (drift-prone hint) }. `policy`
+// points at a stale path on purpose — the file was reorganized into `policy/v2/`
+// — so the editor sidebar can demonstrate UUID-based move detection.
+const IMPORTS: Record<string, core.Import> = {
+  design: { id: "0192f3a1-d0d0-7000-9000-00000design01", path: "design/architecture.lmd", pin: "@7" },
+  policy: { id: "0192f3a1-d0d0-7000-9000-00000policy01", path: "policy/security.lmd", pin: "@2" },
+  glossary: { id: "0192f3a1-d0d0-7000-9000-0000glossary1", path: "reference/glossary.lmd" },
+  // A dangling import — its UUID is nowhere in the workspace — so the sidebar can
+  // demonstrate the "not found → keep or delete links" flow.
+  legacy: { id: "0192f3a1-d0d0-7000-9000-00000legacy01", path: "archive/old-spec.lmd", pin: "@1" },
+};
+const FM: core.Frontmatter = { lmd: 1, id: "demo", version: 1, title: "Demo", imports: IMPORTS };
 const PALETTE = 4;
 const PALETTE_HEX = ["#7c9cff", "#5fd6a6", "#f2b45e", "#e78bd0"];
 
@@ -335,6 +346,22 @@ export function App() {
   if (error) return <div className="fatal">⚠ {error}</div>;
   if (!ready) return <div className="loading">Loading…</div>;
 
+  // Editing takes over the whole screen — no reader columns.
+  if (editing) {
+    return (
+      <EditorShell
+        initial={body}
+        anchors={sections.map((s) => ({ slug: s.slug, title: s.title }))}
+        imports={IMPORTS}
+        onSave={(b) => {
+          setBody(b);
+          setEditing(false);
+        }}
+        onCancel={() => setEditing(false)}
+      />
+    );
+  }
+
   const current = focusSlug ? bySlug.get(focusSlug) : sections[0];
 
   return (
@@ -379,30 +406,16 @@ export function App() {
         <section className="col col--current">
           <div className="col__label">
             Document
-            {!editing && (
-              <button className="editbtn" onClick={() => setEditing(true)}>
-                ✎ Edit
-              </button>
-            )}
+            <button className="editbtn" onClick={() => setEditing(true)}>
+              ✎ Edit
+            </button>
           </div>
-          {editing ? (
-            <SectionEditor
-              initial={body}
-              anchors={sections.map((s) => ({ slug: s.slug, title: s.title }))}
-              onSave={(b) => {
-                setBody(b);
-                setEditing(false);
-              }}
-              onCancel={() => setEditing(false)}
-            />
-          ) : (
-            <div className="doc-wrap">
-              <div className="focusline" aria-hidden />
-              <div className="doc doc--current" ref={centerScroll}>
-                <article className="doc__body" ref={centerRef} onClick={onCenterClick} dangerouslySetInnerHTML={{ __html: docHtml }} />
-              </div>
+          <div className="doc-wrap">
+            <div className="focusline" aria-hidden />
+            <div className="doc doc--current" ref={centerScroll}>
+              <article className="doc__body" ref={centerRef} onClick={onCenterClick} dangerouslySetInnerHTML={{ __html: docHtml }} />
             </div>
-          )}
+          </div>
         </section>
 
         <section className="col col--links">

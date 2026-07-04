@@ -6,6 +6,48 @@ export interface AnchorOption {
   title: string;
 }
 
+/** An imported anchor offered by the `ref ` autocomplete as `alias:slug`. */
+export interface CrossAnchor {
+  addr: string; // e.g. "design:passes"
+  label: string; // anchor title
+  alias: string; // import alias, for grouping
+}
+
+interface Suggestion {
+  addr: string;
+  label: string;
+  group: string;
+}
+
+/** Pixel coordinates of the caret at `index`, relative to the textarea box. */
+function caretCoords(ta: HTMLTextAreaElement, index: number): { x: number; y: number } {
+  const div = document.createElement("div");
+  const s = getComputedStyle(ta);
+  const props = [
+    "fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight", "letterSpacing",
+    "textTransform", "wordSpacing", "paddingTop", "paddingRight", "paddingBottom",
+    "paddingLeft", "borderTopWidth", "borderRightWidth", "borderBottomWidth",
+    "borderLeftWidth", "boxSizing", "tabSize",
+  ] as const;
+  for (const p of props) (div.style as unknown as Record<string, string>)[p] = s.getPropertyValue(
+    p.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase()),
+  );
+  div.style.position = "absolute";
+  div.style.visibility = "hidden";
+  div.style.whiteSpace = "pre-wrap";
+  div.style.overflowWrap = "break-word";
+  div.style.width = `${ta.clientWidth}px`;
+  div.textContent = ta.value.slice(0, index);
+  const span = document.createElement("span");
+  span.textContent = ta.value.slice(index) || ".";
+  div.appendChild(span);
+  document.body.appendChild(div);
+  const x = span.offsetLeft;
+  const y = span.offsetTop;
+  document.body.removeChild(div);
+  return { x, y };
+}
+
 const RELS = [
   "related",
   "parent",
@@ -77,11 +119,13 @@ function highlight(text: string): string {
 export function SectionEditor({
   initial,
   anchors,
+  crossAnchors = [],
   onSave,
   onCancel,
 }: {
   initial: string;
   anchors: AnchorOption[];
+  crossAnchors?: CrossAnchor[];
   onSave: (md: string) => void;
   onCancel: () => void;
 }) {
@@ -89,8 +133,62 @@ export function SectionEditor({
   const [composer, setComposer] = useState<{ at: number } | null>(null);
   const [query, setQuery] = useState("");
   const [picks, setPicks] = useState<Pick[]>([]);
+  // `ref ` autocomplete: a slash-menu-style popup pinned at the caret.
+  const [refMenu, setRefMenu] = useState<{ at: number; x: number; y: number } | null>(null);
+  const [refSel, setRefSel] = useState(0);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const hlRef = useRef<HTMLDivElement>(null);
+
+  // Every address the popup can offer: this document's anchors, then imports.
+  const allSuggest = useMemo<Suggestion[]>(() => {
+    const local: Suggestion[] = anchors.map((a) => ({
+      addr: `:${a.slug}`,
+      label: a.title,
+      group: "this document",
+    }));
+    const cross: Suggestion[] = crossAnchors.map((c) => ({
+      addr: c.addr,
+      label: c.label,
+      group: c.alias,
+    }));
+    return [...local, ...cross];
+  }, [anchors, crossAnchors]);
+
+  const refQuery = refMenu ? draft.slice(refMenu.at, taRef.current?.selectionStart ?? refMenu.at) : "";
+  const refHits = useMemo<Suggestion[]>(() => {
+    if (!refMenu) return [];
+    const q = refQuery.trim().toLowerCase();
+    return allSuggest
+      .filter((s) => !q || s.addr.toLowerCase().includes(q) || s.label.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [refMenu, refQuery, allSuggest]);
+
+  function openRefMenu(at: number) {
+    const ta = taRef.current;
+    if (!ta) return;
+    const { x, y } = caretCoords(ta, at);
+    setRefSel(0);
+    setRefMenu({ at, x: x - ta.scrollLeft, y: y - ta.scrollTop });
+  }
+
+  function insertRef(s: Suggestion) {
+    const ta = taRef.current;
+    const caret = ta?.selectionStart ?? (refMenu?.at ?? 0);
+    if (!refMenu) return;
+    const before = draft.slice(0, refMenu.at);
+    const after = draft.slice(caret);
+    const next = before + s.addr + after;
+    setDraft(next);
+    setRefMenu(null);
+    const pos = refMenu.at + s.addr.length;
+    requestAnimationFrame(() => {
+      const el = taRef.current;
+      if (el) {
+        el.focus();
+        el.selectionStart = el.selectionEnd = pos;
+      }
+    });
+  }
 
   function onChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const el = e.target;
@@ -105,7 +203,50 @@ export function SectionEditor({
       setComposer({ at });
       return;
     }
+    // A space just landed right after `ref` → offer link targets. This catches
+    // the space in `<!--lmd:ref ` however it was typed.
+    if (val.length === draft.length + 1 && val[caret - 1] === " " && val.slice(caret - 4, caret) === "ref ") {
+      setDraft(val);
+      openRefMenu(caret);
+      return;
+    }
+    // Typing on: keep the menu's query live, or close it on a delimiter.
+    if (refMenu) {
+      const typed = val.slice(refMenu.at, caret);
+      if (caret < refMenu.at || /[\s,>]/.test(typed.slice(-1))) setRefMenu(null);
+    }
     setDraft(val);
+  }
+
+  function onEditorKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (refMenu && refHits.length) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setRefSel((i) => (i + 1) % refHits.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setRefSel((i) => (i - 1 + refHits.length) % refHits.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        insertRef(refHits[Math.min(refSel, refHits.length - 1)]);
+        return;
+      }
+    }
+    if (e.key === "Escape") {
+      if (refMenu) {
+        e.preventDefault();
+        setRefMenu(null);
+        return;
+      }
+      if (composer) {
+        e.preventDefault();
+        setComposer(null);
+      }
+    }
   }
 
   const results = useMemo(() => {
@@ -184,13 +325,30 @@ export function SectionEditor({
               hl.scrollLeft = e.currentTarget.scrollLeft;
             }
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape" && composer) {
-              e.preventDefault();
-              setComposer(null);
-            }
-          }}
+          onKeyDown={onEditorKey}
         />
+
+        {refMenu && refHits.length > 0 && (
+          <ul className="refmenu" style={{ left: refMenu.x, top: refMenu.y + 22 }}>
+            <li className="refmenu__hint">link target{refQuery ? ` · ${refQuery}` : ""}</li>
+            {refHits.map((s, i) => (
+              <li key={s.addr}>
+                <button
+                  className={`refmenu__opt${i === refSel ? " is-sel" : ""}`}
+                  onMouseEnter={() => setRefSel(i)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    insertRef(s);
+                  }}
+                >
+                  <span className="refmenu__addr">{s.addr}</span>
+                  <span className="refmenu__label">{s.label}</span>
+                  <span className="refmenu__group">{s.group}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {composer && (
           <div className="composer">

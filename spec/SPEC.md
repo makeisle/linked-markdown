@@ -55,8 +55,8 @@ id: 0192f3a1-7c2e-7b3d-9f10-aa01cap00001     # document UUID (UUIDv7 recommended
 version: 3                                    # integer, bumped on content change
 title: Membership specification
 imports:                                      # namespace alias -> imported doc
-  design: { id: 0192…design0001, pin: "@7" }
-  policy: { id: 0192…policy0001, range: ">=2 <3", pin: "@2" }
+  design: { id: 0192…design0001, path: "design/architecture.lmd", pin: "@7" }
+  policy: { id: 0192…policy0001, path: "policy/security.lmd", range: ">=2 <3", pin: "@2" }
 ---
 ```
 
@@ -66,11 +66,15 @@ imports:                                      # namespace alias -> imported doc
 | `id` | yes | document UUID (global, immutable) |
 | `version` | yes | document version (integer) |
 | `title` | yes | display title |
-| `imports` | no | alias → `{ id, pin?, range? }` |
+| `imports` | no | alias → `{ id, path?, pin?, range? }` |
 
-For an import: `pin` is the resolved concrete version (e.g. `"@7"`); `range` is an
-allowed band that `build` resolves a pin within. With neither, the reference
-floats to the target's current version.
+For an import: `id` is the imported document's UUID (the durable identity); `path`
+is a *hint* to where that document lives — a workspace-relative or network path.
+The path may drift as files move; `id` does not, so a tool that cannot find the
+document at `path` re-locates it by scanning for `id` and updates the hint. `pin`
+is the resolved concrete version (e.g. `"@7"`); `range` is an allowed band that
+`build` resolves a pin within. With neither, the reference floats to the target's
+current version.
 
 ## 4. Body — escape tags
 

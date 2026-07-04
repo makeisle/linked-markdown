@@ -32,7 +32,7 @@ export type NodeKind =
   | "heading" | "para" | "list-item" | "table-row"
   | "code" | "quote" | "image" | "hr";
 
-export interface Import { id: string; pin?: string; range?: string }
+export interface Import { id: string; path?: string; pin?: string; range?: string }
 export interface Frontmatter {
   lmd: number;
   id: string;
