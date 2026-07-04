@@ -281,7 +281,9 @@ body {
   display: flex; flex-direction: column; gap: 2px; padding: 8px 11px; border-radius: 10px;
   border: 1px solid var(--border); border-left: 3px solid var(--lc, var(--accent));
   background: color-mix(in srgb, var(--lc, var(--accent)) 8%, var(--panel));
-  transition: top 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s, border-color 0.12s, box-shadow 0.12s;
+  /* No transition on `top`: cards snap to the layout each scroll frame so the
+     leader lines (redrawn per scroll event) always stay attached. */
+  transition: opacity 0.2s, border-color 0.12s, box-shadow 0.12s;
 }
 .col--links .card:hover {
   transform: none; opacity: 1 !important; border-color: var(--lc, var(--accent));
