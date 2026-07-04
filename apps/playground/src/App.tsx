@@ -69,7 +69,9 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState(DEMO);
   const [focusSlug, setFocusSlug] = useState<string | null>(null);
-  const [prevSlug, setPrevSlug] = useState<string | null>(null);
+  // Navigation back-stack of anchors you jumped to by clicking. Scrolling does
+  // not touch this — only explicit navigation does.
+  const [stack, setStack] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [linkCards, setLinkCards] = useState<LinkCard[]>([]);
 
@@ -230,7 +232,6 @@ export function App() {
       root.querySelectorAll(".lmd-focus").forEach((e) => e.classList.remove("lmd-focus"));
       bestBlock.classList.add("lmd-focus");
       if (best !== focusRef.current) {
-        setPrevSlug(focusRef.current);
         focusRef.current = best;
         setFocusSlug(best);
       }
@@ -266,17 +267,35 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkCards]);
 
-  // Left pane mirrors the previous focus, centered.
-  useEffect(() => {
-    if (prevSlug) focusIn(prevRef.current, prevSlug, false);
-  }, [prevSlug, docHtml]);
+  const leftSlug = stack.length > 1 ? stack[stack.length - 2] : null;
 
-  function goto(slug: string) {
+  // Initialize the back-stack once the document is ready.
+  useEffect(() => {
+    if (sections.length && stack.length === 0) setStack([sections[0].slug]);
+  }, [sections, stack.length]);
+
+  // Left pane mirrors the back-stack's previous entry, centered.
+  useEffect(() => {
+    if (leftSlug) focusIn(prevRef.current, leftSlug, false);
+  }, [leftSlug, docHtml]);
+
+  function scrollTo(slug: string) {
     focusIn(centerRef.current, slug, true);
     setTimeout(() => {
       computeFocus();
       layoutCards();
     }, 260);
+  }
+  // Explicit navigation (click): push onto the back-stack, then scroll there.
+  function goto(slug: string) {
+    if (stack[stack.length - 1] !== slug) setStack([...stack, slug]);
+    scrollTo(slug);
+  }
+  function back() {
+    if (stack.length < 2) return;
+    const ns = stack.slice(0, -1);
+    setStack(ns);
+    scrollTo(ns[ns.length - 1]);
   }
   function onCenterClick(e: React.MouseEvent) {
     const a = (e.target as HTMLElement).closest("a.lmd-ref") as HTMLAnchorElement | null;
@@ -309,19 +328,24 @@ export function App() {
       <main className="cols cols--3">
         <svg className="wires" ref={wiresRef} aria-hidden />
         <section className="col col--prev">
-          <div className="col__label">Previous</div>
-          {prevSlug ? (
+          <div className="col__label">
+            Previous
+            {leftSlug && (
+              <button className="editbtn" onClick={back} title="Back">
+                ← back
+              </button>
+            )}
+          </div>
+          {leftSlug ? (
             <div className="doc-wrap">
               <div className="focusline focusline--sm" aria-hidden />
-              <div className="doc doc--ghost" onClick={() => goto(prevSlug)} title="Back here">
+              <div className="doc doc--ghost" onClick={back} title="Go back">
                 <article className="doc__body" ref={prevRef} dangerouslySetInnerHTML={{ __html: docHtml }} />
               </div>
-              <div className="doc__badge">
-                {bySlug.get(prevSlug)?.title} · ← back
-              </div>
+              <div className="doc__badge">{bySlug.get(leftSlug)?.title} · ← back</div>
             </div>
           ) : (
-            <div className="col__empty">No history yet — scroll or follow a link.</div>
+            <div className="col__empty">No history yet — follow a link to build it.</div>
           )}
         </section>
 
