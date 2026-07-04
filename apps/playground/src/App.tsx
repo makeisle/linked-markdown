@@ -144,39 +144,67 @@ export function App() {
   const layoutCards = () => {
     const canvas = canvasRef.current;
     const root = centerRef.current;
-    if (!canvas || !root) return;
+    const pane = centerScroll.current;
+    if (!canvas || !root || !pane) return;
     const cRect = canvas.getBoundingClientRect();
-    const midY = cRect.height / 2;
-    const visible: { el: HTMLButtonElement; src: HTMLElement; color: number; srcY: number; h: number }[] = [];
+    const H = cRect.height;
+    // The focus line: the pane's vertical centre, in canvas coordinates.
+    const midY = pane.getBoundingClientRect().top + pane.getBoundingClientRect().height / 2 - cRect.top;
+
+    // Only refs whose source is on-screen get a card, positioned at the source's
+    // height (top = srcY − h/2).
+    type Item = { el: HTMLButtonElement; src: HTMLElement; color: number; srcY: number; h: number; top: number };
+    const items: Item[] = [];
     for (const card of linkCardsRef.current) {
       const el = cardRefs.current.get(card.id);
       if (!el) continue;
       const src = root.querySelector<HTMLElement>(`[data-src-id="${card.srcId}"]`);
-      if (!src) {
+      const r = src?.getBoundingClientRect();
+      const srcY = r ? r.top + r.height / 2 - cRect.top : -1;
+      if (!src || srcY < 0 || srcY > H) {
         el.style.display = "none";
         continue;
       }
-      const r = src.getBoundingClientRect();
-      const srcY = r.top + r.height / 2 - cRect.top;
-      if (srcY < -40 || srcY > cRect.height + 40) {
-        el.style.display = "none";
-        continue;
-      }
-      el.style.display = "";
-      visible.push({ el, src, color: card.color, srcY, h: el.offsetHeight || 58 });
+      const h = el.offsetHeight || 58;
+      items.push({ el, src, color: card.color, srcY, h, top: srcY - h / 2 });
     }
-    visible.sort((a, b) => a.srcY - b.srcY);
+    items.sort((a, b) => a.srcY - b.srcY);
+
+    // Resolve overlaps by spreading *outward from the focus line*: the card whose
+    // source is nearest the line keeps its place; cards above are pushed up in
+    // distance order, cards below pushed down.
     const gap = 8;
-    let prevBottom = -1e9;
-    for (const it of visible) {
-      let top = it.srcY - it.h / 2;
-      if (top < prevBottom + gap) top = prevBottom + gap;
-      top = Math.max(4, Math.min(top, cRect.height - it.h - 4));
-      prevBottom = top + it.h;
-      it.el.style.top = `${top}px`;
-      it.el.style.opacity = String(Math.max(0.4, 1 - (Math.abs(top + it.h / 2 - midY) / midY) * 0.7));
+    if (items.length) {
+      let pivot = 0;
+      let best = Infinity;
+      items.forEach((it, i) => {
+        const d = Math.abs(it.srcY - midY);
+        if (d < best) {
+          best = d;
+          pivot = i;
+        }
+      });
+      for (let i = pivot + 1; i < items.length; i++) {
+        items[i].top = Math.max(items[i].top, items[i - 1].top + items[i - 1].h + gap);
+      }
+      for (let i = pivot - 1; i >= 0; i--) {
+        items[i].top = Math.min(items[i].top, items[i + 1].top - gap - items[i].h);
+      }
     }
-    drawWires(visible);
+
+    const shown: Item[] = [];
+    for (const it of items) {
+      // Overflow past the top/bottom of the column is hidden.
+      if (it.top < 4 || it.top + it.h > H - 4) {
+        it.el.style.display = "none";
+        continue;
+      }
+      it.el.style.display = "";
+      it.el.style.top = `${it.top}px`;
+      it.el.style.opacity = String(Math.max(0.5, 1 - (Math.abs(it.top + it.h / 2 - midY) / midY) * 0.5));
+      shown.push(it);
+    }
+    drawWires(shown);
   };
 
   // Draw a leader line from each card to its source link's height on the
