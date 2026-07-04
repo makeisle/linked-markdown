@@ -26,10 +26,34 @@ interface Pick {
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+// The escape scaffolding (delimiters, keywords, roles, `=`, `,`) is "punct"
+// (sand); the meaningful identifiers — anchor names and target addresses — are
+// "name" (teal). Source text between a ref's tags stays plain.
+const punct = (s: string) => `<span class="hl-punct">${esc(s)}</span>`;
+const name = (s: string) => `<span class="hl-name">${esc(s)}</span>`;
 
-// Wrap anchors (teal) and whole refs (sand) in coloured spans for the editor's
-// syntax-highlight backdrop. Everything else is escaped plain text.
-const RE_TOKEN = /(<!--lmd:a\s[^>]*?-->)|(<!--lmd:ref\s[\s\S]*?<!--\s*\/lmd\s*-->)/g;
+function hlTargets(s: string): string {
+  return s.replace(
+    /(\s+)|([a-z_]+=)|(,)|([:#]?[a-z][a-z0-9-]*(?::[a-z0-9-]+)?(?:@[\w.]+)?)/g,
+    (m, ws, role, comma, addr) => {
+      if (ws) return ws;
+      if (role) return punct(role);
+      if (comma) return punct(comma);
+      if (addr) return name(addr);
+      return esc(m);
+    },
+  );
+}
+
+function hlComment(text: string): string {
+  let m = text.match(/^(<!--lmd:a\s+)([a-z][a-z0-9-]*)(\s+rev=\d+)?(\s*-->)$/);
+  if (m) return punct(m[1]) + name(m[2]) + punct(m[3] ?? "") + punct(m[4]);
+  m = text.match(/^(<!--lmd:ref\s+)([\s\S]*?)(\s*-->)$/);
+  if (m) return punct(m[1]) + hlTargets(m[2]) + punct(m[3]);
+  return punct(text); // ref close <!--/lmd-->
+}
+
+const RE_TOKEN = /<!--lmd:a\s+[a-z][a-z0-9-]*(?:\s+rev=\d+)?\s*-->|<!--lmd:ref\s+[\s\S]*?-->|<!--\s*\/lmd\s*-->/g;
 function highlight(text: string): string {
   let out = "";
   let last = 0;
@@ -37,8 +61,7 @@ function highlight(text: string): string {
   RE_TOKEN.lastIndex = 0;
   while ((m = RE_TOKEN.exec(text))) {
     out += esc(text.slice(last, m.index));
-    const cls = m[1] ? "hl-anchor" : "hl-ref";
-    out += `<span class="${cls}">${esc(m[0])}</span>`;
+    out += hlComment(m[0]);
     last = m.index + m[0].length;
   }
   out += esc(text.slice(last));

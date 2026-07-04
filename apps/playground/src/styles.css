@@ -211,12 +211,9 @@ body {
   z-index: 0; pointer-events: none; overflow: hidden;
   color: var(--text); background: transparent;
 }
-.editor__hl .hl-anchor {
-  color: #227995; background: rgba(34, 121, 149, 0.16); border-radius: 3px;
-}
-.editor__hl .hl-ref {
-  color: #d1a987; background: rgba(209, 169, 135, 0.13); border-radius: 3px;
-}
+/* Escape scaffolding recedes in sand; the identifiers pop in teal. */
+.editor__hl .hl-punct { color: #c2a07a; }
+.editor__hl .hl-name { color: #3fb2cf; font-weight: 600; }
 
 /* Connection composer */
 .composer {
