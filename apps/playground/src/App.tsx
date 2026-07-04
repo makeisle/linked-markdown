@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import wasmUrl from "@lmd/core/pkg/lmd_wasm_bg.wasm?url";
 import { DEMO } from "./demo.js";
 import { EditorShell } from "./EditorShell.js";
-import { ModalViewer } from "./ModalViewer.js";
 import { workspace, type WsDoc } from "./workspace.js";
 
 interface Section {
@@ -48,7 +47,14 @@ const IMPORTS: Record<string, core.Import> = {
   legacy: { id: "0192f3a1-d0d0-7000-9000-00000legacy01", path: "archive/old-spec.lmd", pin: "@1" },
 };
 const FM: core.Frontmatter = { lmd: 1, id: "demo", version: 1, title: "Demo", imports: IMPORTS };
+const MAIN_KEY = "main";
 const PALETTE = 4;
+
+/** A back-stack entry: which document is in view, and the focused anchor. */
+interface NavEntry {
+  key: string; // MAIN_KEY or an imported doc's UUID
+  slug: string;
+}
 const PALETTE_HEX = ["#7c9cff", "#5fd6a6", "#f2b45e", "#e78bd0"];
 
 function splitSections(body: string): Section[] {
@@ -121,13 +127,14 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState(DEMO);
   const [focusSlug, setFocusSlug] = useState<string | null>(null);
-  // Navigation back-stack of anchors you jumped to by clicking. Scrolling does
-  // not touch this — only explicit navigation does.
-  const [stack, setStack] = useState<string[]>([]);
+  // Which document fills the centre column, and the imported docs we've loaded.
+  const [viewKey, setViewKey] = useState(MAIN_KEY);
+  const [crossDocs, setCrossDocs] = useState<Map<string, WsDoc>>(new Map());
+  // Navigation back-stack of (document, anchor) you jumped to by clicking.
+  // Scrolling does not touch this — only explicit navigation does.
+  const [stack, setStack] = useState<NavEntry[]>([]);
   const [editing, setEditing] = useState(false);
   const [linkCards, setLinkCards] = useState<LinkCard[]>([]);
-  // A cross-doc card/link opens the imported document in a modal, focused.
-  const [modal, setModal] = useState<{ doc: WsDoc; slug: string } | null>(null);
 
   const centerScroll = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
@@ -137,6 +144,9 @@ export function App() {
   const cardRefs = useRef(new Map<number, HTMLButtonElement | null>());
 
   const focusRef = useRef<string | null>(null);
+  // A slug to focus once the *next* render lands (used when the view swaps to a
+  // different document, whose DOM doesn't exist yet at click time).
+  const pendingRef = useRef<string | null>(null);
   const sectionsRef = useRef<Section[]>([]);
   const linkCardsRef = useRef<LinkCard[]>([]);
 
@@ -144,9 +154,25 @@ export function App() {
     core.init(wasmUrl).then(() => setReady(true)).catch((e) => setError(String(e)));
   }, []);
 
-  const sections = useMemo(() => splitSections(body), [body]);
+  // The document currently in the centre column — the editable main doc, or a
+  // read-only imported one we've navigated into.
+  const docReg = (key: string): { title: string; body: string; editable: boolean; id: string } => {
+    if (key === MAIN_KEY) return { title: FM.title, body, editable: true, id: FM.id };
+    const d = crossDocs.get(key);
+    return d
+      ? { title: d.title, body: d.body, editable: false, id: d.uuid }
+      : { title: "(missing)", body: "", editable: false, id: key };
+  };
+  const view = docReg(viewKey);
+
+  const sections = useMemo(() => splitSections(view.body), [view.body]);
   const bySlug = useMemo(() => new Map(sections.map((s) => [s.slug, s])), [sections]);
-  const docHtml = useMemo(() => renderToHtml({ frontmatter: FM, body }).html, [body]);
+  const docHtml = useMemo(() => {
+    const fm: core.Frontmatter =
+      viewKey === MAIN_KEY ? FM : { lmd: 1, id: view.id, version: 1, title: view.title };
+    return renderToHtml({ frontmatter: fm, body: view.body }).html;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view.body]);
 
   sectionsRef.current = sections;
   linkCardsRef.current = linkCards;
@@ -329,11 +355,20 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, editing, docHtml]);
 
-  // Initial centering, then focus follows scroll.
+  // Initial centering, then focus follows scroll. When the view swapped to a new
+  // document, `pendingRef` names the anchor to land on.
   useEffect(() => {
     if (!ready || editing || !sections.length) return;
     const t = setTimeout(() => {
-      if (!focusRef.current) focusIn(centerRef.current, sections[0].slug, false);
+      if (pendingRef.current) {
+        const want = pendingRef.current;
+        pendingRef.current = null;
+        focusRef.current = want;
+        setFocusSlug(want);
+        focusIn(centerRef.current, want, false);
+      } else if (!focusRef.current) {
+        focusIn(centerRef.current, sections[0].slug, false);
+      }
       computeFocus();
       layoutCards();
     }, 0);
@@ -346,17 +381,27 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkCards]);
 
-  const leftSlug = stack.length > 1 ? stack[stack.length - 2] : null;
+  const leftEntry = stack.length > 1 ? stack[stack.length - 2] : null;
+  const leftReg = leftEntry ? docReg(leftEntry.key) : null;
+  const leftHtml = useMemo(() => {
+    if (!leftEntry || !leftReg || !leftReg.body) return "";
+    const fm: core.Frontmatter =
+      leftEntry.key === MAIN_KEY ? FM : { lmd: 1, id: leftReg.id, version: 1, title: leftReg.title };
+    return renderToHtml({ frontmatter: fm, body: leftReg.body }).html;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leftEntry?.key, leftReg?.body]);
 
   // Initialize the back-stack once the document is ready.
   useEffect(() => {
-    if (sections.length && stack.length === 0) setStack([sections[0].slug]);
-  }, [sections, stack.length]);
+    if (sections.length && stack.length === 0 && viewKey === MAIN_KEY) {
+      setStack([{ key: MAIN_KEY, slug: sections[0].slug }]);
+    }
+  }, [sections, stack.length, viewKey]);
 
   // Left pane mirrors the back-stack's previous entry, centered.
   useEffect(() => {
-    if (leftSlug) focusIn(prevRef.current, leftSlug, false);
-  }, [leftSlug, docHtml]);
+    if (leftEntry) focusIn(prevRef.current, leftEntry.slug, false);
+  }, [leftEntry?.key, leftEntry?.slug, leftHtml]);
 
   function scrollTo(slug: string) {
     focusIn(centerRef.current, slug, true);
@@ -365,29 +410,66 @@ export function App() {
       layoutCards();
     }, 260);
   }
-  // Explicit navigation (click): push onto the back-stack, then scroll there.
+  // Push a navigation entry, first syncing the entry we're *leaving* to our
+  // actual scroll focus — so "back" returns to where we were, not where we
+  // entered this document.
+  function pushEntry(next: NavEntry) {
+    const cur = focusRef.current; // capture now — gotoDoc nulls it right after
+    const from = viewKey;
+    setStack((prev) => {
+      const s = [...prev];
+      if (s.length && s[s.length - 1].key === from && cur) s[s.length - 1] = { key: from, slug: cur };
+      const top = s[s.length - 1];
+      if (!top || top.key !== next.key || top.slug !== next.slug) s.push(next);
+      return s;
+    });
+  }
+  // Navigate within the current view (same document): push + scroll.
   function goto(slug: string) {
-    if (stack[stack.length - 1] !== slug) setStack([...stack, slug]);
+    pushEntry({ key: viewKey, slug });
     scrollTo(slug);
+  }
+  // Navigate into another document — it takes over the centre column, focused on
+  // `slug`, and the one you left becomes the "Previous" pane. Same as a local
+  // link, just across a document boundary.
+  function gotoDoc(doc: WsDoc, slug: string) {
+    if (doc.uuid === viewKey) {
+      goto(slug);
+      return;
+    }
+    setCrossDocs((m) => (m.has(doc.uuid) ? m : new Map(m).set(doc.uuid, doc)));
+    pushEntry({ key: doc.uuid, slug }); // reads focusRef under the *leaving* view
+    focusRef.current = null;
+    pendingRef.current = slug;
+    setViewKey(doc.uuid);
   }
   function back() {
     if (stack.length < 2) return;
     const ns = stack.slice(0, -1);
+    const target = ns[ns.length - 1];
     setStack(ns);
-    scrollTo(ns[ns.length - 1]);
+    if (target.key !== viewKey) {
+      focusRef.current = null;
+      pendingRef.current = target.slug;
+      setViewKey(target.key);
+    } else {
+      scrollTo(target.slug);
+    }
   }
-  function openCross(alias: string, slug: string) {
-    const r = resolveCross(alias, slug);
-    if (r) setModal({ doc: r.doc, slug });
+  function followTarget(t: RefTarget) {
+    if (t.kind === "cross") {
+      const r = resolveCross(t.alias, t.slug);
+      if (r) gotoDoc(r.doc, t.slug);
+    } else {
+      goto(t.slug);
+    }
   }
   function onCenterClick(e: React.MouseEvent) {
     const el = (e.target as HTMLElement).closest(".lmd-ref") as HTMLElement | null;
     if (!el) return;
     e.preventDefault();
     const first = refTargets(el.getAttribute("data-lmd-targets") ?? "")[0];
-    if (!first) return;
-    if (first.kind === "cross") openCross(first.alias, first.slug);
-    else goto(first.slug);
+    if (first) followTarget(first);
   }
 
   if (error) return <div className="fatal">⚠ {error}</div>;
@@ -422,6 +504,7 @@ export function App() {
           <span className="brand__tag">reader</span>
         </div>
         <div className="focusnow">
+          {viewKey !== MAIN_KEY && <span className="focusdoc">{view.title} ↗</span>}
           Focused on <span className="focustag">{current?.title}</span>
         </div>
       </header>
@@ -431,19 +514,19 @@ export function App() {
         <section className="col col--prev">
           <div className="col__label">
             Previous
-            {leftSlug && (
+            {leftEntry && (
               <button className="editbtn" onClick={back} title="Back">
                 ← back
               </button>
             )}
           </div>
-          {leftSlug ? (
+          {leftEntry && leftReg ? (
             <div className="doc-wrap">
               <div className="focusline focusline--sm" aria-hidden />
               <div className="doc doc--ghost" onClick={back} title="Go back">
-                <article className="doc__body" ref={prevRef} dangerouslySetInnerHTML={{ __html: docHtml }} />
+                <article className="doc__body" ref={prevRef} dangerouslySetInnerHTML={{ __html: leftHtml }} />
               </div>
-              <div className="doc__badge">{bySlug.get(leftSlug)?.title} · ← back</div>
+              <div className="doc__badge">{leftReg.title} · ← back</div>
             </div>
           ) : (
             <div className="col__empty">No history yet — follow a link to build it.</div>
@@ -452,10 +535,16 @@ export function App() {
 
         <section className="col col--current">
           <div className="col__label">
-            Document
-            <button className="editbtn" onClick={() => setEditing(true)}>
-              ✎ Edit
-            </button>
+            {viewKey === MAIN_KEY ? "Document" : view.title}
+            {view.editable ? (
+              <button className="editbtn" onClick={() => setEditing(true)}>
+                ✎ Edit
+              </button>
+            ) : (
+              <button className="editbtn" onClick={back} title="Back to where you came from">
+                ← back
+              </button>
+            )}
           </div>
           <div className="doc-wrap">
             <div className="focusline" aria-hidden />
@@ -475,7 +564,14 @@ export function App() {
                 className={`card lc-${card.color}${card.kind === "cross" ? " card--cross" : ""}`}
                 data-dir="mid"
                 style={{ display: "none" }}
-                onClick={() => (card.kind === "cross" ? openCross(card.alias!, card.slug) : goto(card.slug))}
+                onClick={() => {
+                  if (card.kind === "cross") {
+                    const doc = crossDocs.get(card.docUuid!) ?? workspace.findByUuid(card.docUuid!);
+                    if (doc) gotoDoc(doc, card.slug);
+                  } else {
+                    goto(card.slug);
+                  }
+                }}
               >
                 {card.kind === "cross" && (
                   <span className="card__ext">
@@ -489,8 +585,6 @@ export function App() {
           </div>
         </section>
       </main>
-
-      {modal && <ModalViewer doc={modal.doc} slug={modal.slug} onClose={() => setModal(null)} />}
     </div>
   );
 }

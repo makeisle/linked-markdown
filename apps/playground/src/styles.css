@@ -426,6 +426,8 @@ body {
 .modal__foot code { font-family: var(--mono); color: #7fd6ea; }
 .modal .lmd-focus { background: rgba(63, 178, 207, 0.12); box-shadow: -3px 0 0 #3fb2cf; border-radius: 3px; }
 
+.focusdoc { font-size: 12px; color: #7fd6ea; margin-right: 10px; padding: 2px 8px; border: 1px solid rgba(63, 178, 207, 0.4); border-radius: 999px; }
+
 /* Cross-document links: a small external marker on the card + in the body. */
 .card--cross { border-style: dashed; }
 .card__ext { font-family: var(--mono); font-size: 10px; color: var(--text-faint); display: block; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
