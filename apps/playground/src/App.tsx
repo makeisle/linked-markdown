@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import wasmUrl from "@lmd/core/pkg/lmd_wasm_bg.wasm?url";
 import { DEMO } from "./demo.js";
 import { EditorShell } from "./EditorShell.js";
+import { Logo } from "./Logo.js";
 import { workspace, type WsDoc } from "./workspace.js";
 
 interface Section {
@@ -55,7 +56,8 @@ interface NavEntry {
   key: string; // MAIN_KEY or an imported doc's UUID
   slug: string;
 }
-const PALETTE_HEX = ["#7c9cff", "#5fd6a6", "#f2b45e", "#e78bd0"];
+// Sandevaux surface hues — teal, tan, mauve, sage — for distinguishing links.
+const PALETTE_HEX = ["#4f9bb5", "#d1a987", "#9c8ab0", "#3e8e70"];
 
 function splitSections(body: string): Section[] {
   const lines = body.split("\n");
@@ -481,9 +483,7 @@ export function App() {
     <div className="reader">
       <header className="reader__bar">
         <div className="brand">
-          <span className="brand__mark" aria-hidden>
-            ⬡
-          </span>
+          <Logo className="brand__mark" />
           <span className="brand__name">Linked Markdown</span>
           <span className="brand__tag">{editing ? "editor" : "reader"}</span>
         </div>
