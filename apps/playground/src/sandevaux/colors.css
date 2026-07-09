@@ -1,0 +1,132 @@
+/* SANDEVAUX — Color
+ * The brand is built from two supplied logo colors: Teal (#227995, the
+ * wordmark + X-blades) and Sand (#d1a987, the spark dot + letter inlays).
+ * Teal is the primary accent (CTAs, focus, active); Sand is the warm
+ * highlight. A cool Ink ramp + Paper carry structure. Dev semantics
+ * (run/build/fail/info) stay distinct from both. Dark is a first-class theme.
+ */
+
+:root {
+  /* ---- Ink — teal-tinted charcoal ramp (harmonized to the brand) -- */
+  --ink-950: #0C1416; /* darkest — dark-mode page (deep teal-black) */
+  --ink-900: #101A1C;
+  --ink-850: #142022;
+  --ink-800: #182629; /* dark-mode surface */
+  --ink-700: #243237;
+  --ink-600: #354750;
+  --ink-500: #57676E; /* muted text */
+  --ink-400: #7C8C92;
+  --ink-300: #A6B2B6;
+  --ink-200: #CAD2D4;
+  --ink-100: #E5EAEB;
+  --ink-050: #F1F4F4;
+
+  /* ---- Paper — warm, faintly sand-tinted light surfaces ----------- */
+  --paper: #FFFFFF;
+  --paper-100: #FAF8F4; /* light page — warm off-white */
+  --paper-200: #F2EDE5; /* sunken well — sand-tinted */
+  --paper-300: #E7E0D5;
+
+  /* ---- Teal — primary brand color (logo .cls-1) ------------------- */
+  --teal-200: #BCD9E2;
+  --teal-300: #84BACB;
+  --teal-400: #4795AE;
+  --teal-500: #227995; /* brand — primary accent */
+  --teal-600: #1C6379;
+  --teal-700: #164E5F;
+  --teal-tint: rgba(34, 121, 149, 0.12);
+
+  /* ---- Sand — warm highlight (logo .cls-2, the spark dot) ---------- */
+  --sand-200: #EFE1D2;
+  --sand-300: #E3CBB4;
+  --sand-400: #DBB99B;
+  --sand-500: #D1A987; /* brand — warm highlight */
+  --sand-600: #BC8E68;
+  --sand-700: #9B7250;
+  --sand-tint: rgba(209, 169, 135, 0.20);
+
+  /* ---- Dev semantics — status of sandboxes & runs ----------------- */
+  --run-500: #19A974;   /* running / success — emerald */
+  --run-tint: rgba(25, 169, 116, 0.14);
+  --build-500: #E0A106; /* building / warning — amber */
+  --build-tint: rgba(224, 161, 6, 0.16);
+  --fail-500: #E5484D;  /* failed / error — red */
+  --fail-tint: rgba(229, 72, 77, 0.14);
+  --info-500: #3E73C9;  /* info / links — blue (cooler than teal) */
+  --info-tint: rgba(62, 115, 201, 0.12);
+
+  /* ---- Hairlines & films ------------------------------------------ */
+  --line-ink: rgba(12, 20, 22, 0.11);
+  --line-ink-strong: rgba(12, 20, 22, 0.19);
+  --line-paper: rgba(233, 240, 240, 0.11);
+  --line-paper-strong: rgba(233, 240, 240, 0.17);
+
+  /* ================================================================= */
+  /* Semantic aliases — author UI against these (light theme default). */
+  /* ================================================================= */
+
+  --bg: var(--paper-100);
+  --surface: var(--paper);
+  --surface-sunken: var(--paper-200);
+  --surface-raised: var(--paper);
+  --surface-hover: var(--paper-200);
+  --surface-inverse: var(--ink-900);
+
+  --text: var(--ink-900);
+  --text-muted: var(--ink-500);
+  --text-subtle: var(--ink-400);
+  --text-on-inverse: var(--ink-050);
+  --text-on-inverse-muted: var(--ink-300);
+  --text-on-accent: #FFFFFF;
+
+  --border: var(--line-ink);
+  --border-strong: var(--line-ink-strong);
+  --border-inverse: var(--line-paper);
+
+  /* Primary accent = Teal */
+  --accent: var(--teal-500);
+  --accent-hover: var(--teal-600);
+  --accent-text: var(--teal-600); /* teal as text on paper — darker for contrast */
+  --accent-tint: var(--teal-tint);
+
+  /* Warm highlight = Sand */
+  --highlight: var(--sand-500);
+  --highlight-strong: var(--sand-700);
+  --highlight-tint: var(--sand-tint);
+
+  --focus-ring: var(--teal-500);
+  --run: var(--run-500);
+  --build: var(--build-500);
+  --fail: var(--fail-500);
+  --info: var(--info-500);
+
+  color-scheme: light;
+}
+
+/* ===================================================================== */
+/* Dark theme — the developer console default. Apply .theme-dark on a     */
+/* container (or <html>/<body>) to flip every semantic alias.            */
+/* ===================================================================== */
+.theme-dark {
+  --bg: var(--ink-950);
+  --surface: var(--ink-900);
+  --surface-sunken: var(--ink-850);
+  --surface-raised: var(--ink-800);
+  --surface-hover: var(--ink-800);
+  --surface-inverse: var(--paper);
+
+  --text: var(--ink-050);
+  --text-muted: var(--ink-300);
+  --text-subtle: var(--ink-400);
+  --text-on-inverse: var(--ink-900);
+  --text-on-inverse-muted: var(--ink-600);
+
+  --border: var(--line-paper);
+  --border-strong: var(--line-paper-strong);
+  --border-inverse: var(--line-ink);
+
+  --accent-text: var(--teal-300); /* lighter teal for text on ink */
+  --highlight-strong: var(--sand-400);
+
+  color-scheme: dark;
+}

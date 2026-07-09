@@ -1,0 +1,31 @@
+/* SANDEVAUX — Spacing & layout
+ * 4px base unit; a dense, utilitarian dev-tool rhythm (tighter than a marketing
+ * site). Layout favors full-width consoles with fixed rails.
+ */
+
+:root {
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --space-9: 64px;
+  --space-10: 96px;
+  --space-11: 128px;
+
+  /* Layout */
+  --measure: 68ch;            /* comfortable reading width */
+  --gutter: 20px;
+  --page-max: 1280px;         /* marketing content frame */
+  --page-pad: clamp(20px, 4vw, 56px);
+  --section-y: clamp(56px, 8vw, 112px); /* @kind spacing */
+
+  /* Console chrome */
+  --rail-w: 248px;            /* sidebar nav */
+  --topbar-h: 56px;           /* console top bar */
+  --tool-rail-w: 56px;        /* icon tool rail */
+}

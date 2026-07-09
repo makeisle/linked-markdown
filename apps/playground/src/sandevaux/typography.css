@@ -1,0 +1,57 @@
+/* SANDEVAUX — Typography
+ * Three voices: a geometric display (Space Grotesk) that echoes the wordmark,
+ * a neutral UI sans (Hanken Grotesk) for body, and a monospace (JetBrains Mono)
+ * for code, data, and the uppercase micro-label voice that runs through dev UI.
+ */
+
+:root {
+  /* ---- Families --------------------------------------------------- */
+  --font-display: 'Space Grotesk', 'Pretendard', system-ui, sans-serif;
+  --font-sans: 'Pretendard', system-ui, -apple-system, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+  --font-label: var(--font-mono);
+
+  /* ---- Weights ---------------------------------------------------- */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ---- Display scale (Space Grotesk, tight) ----------------------- */
+  --display-2xl: 700 64px/1.04 var(--font-display);
+  --display-xl: 700 48px/1.06 var(--font-display);
+  --display-lg: 600 36px/1.1 var(--font-display);
+  --display-md: 600 27px/1.18 var(--font-display);
+  --display-sm: 600 21px/1.25 var(--font-display);
+
+  /* ---- Body scale (Hanken Grotesk) -------------------------------- */
+  --body-lg: 400 18px/1.6 var(--font-sans);
+  --body-md: 400 15px/1.55 var(--font-sans);
+  --body-sm: 400 13.5px/1.5 var(--font-sans);
+  --body-xs: 400 12px/1.45 var(--font-sans);
+
+  /* ---- Mono scale (JetBrains Mono) -------------------------------- */
+  --mono-md: 400 13.5px/1.6 var(--font-mono);
+  --mono-sm: 400 12.5px/1.6 var(--font-mono);
+  --mono-xs: 400 11.5px/1.5 var(--font-mono);
+
+  /* ---- Label scale (mono, uppercase, tracked) --------------------- */
+  --label-md: 500 12px/1 var(--font-label);
+  --label-sm: 500 10.5px/1 var(--font-label);
+
+  /* ---- Tracking --------------------------------------------------- */
+  --track-display: -0.02em;
+  --track-body: 0; /* @kind other */
+  --track-label: 0.14em;
+  --track-label-tight: 0.08em;
+
+  /* ---- Semantic roles --------------------------------------------- */
+  --text-hero: var(--display-2xl);
+  --text-title: var(--display-lg);
+  --text-subtitle: var(--display-sm);
+  --text-body: var(--body-md);
+  --text-lede: var(--body-lg);
+  --text-code: var(--mono-sm);
+  --text-caption: var(--body-xs);
+  --text-eyebrow: var(--label-sm);
+}

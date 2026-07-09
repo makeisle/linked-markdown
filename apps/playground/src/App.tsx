@@ -56,8 +56,8 @@ interface NavEntry {
   key: string; // MAIN_KEY or an imported doc's UUID
   slug: string;
 }
-// Sandevaux surface hues — teal, tan, mauve, sage — for distinguishing links.
-const PALETTE_HEX = ["#4f9bb5", "#d1a987", "#9c8ab0", "#3e8e70"];
+// Sandevaux hues — teal, sand, info-blue, run-green — for distinguishing links.
+const PALETTE_HEX = ["#4795AE", "#D1A987", "#3E73C9", "#19A974"];
 
 function splitSections(body: string): Section[] {
   const lines = body.split("\n");

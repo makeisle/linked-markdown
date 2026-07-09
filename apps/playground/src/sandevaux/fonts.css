@@ -1,0 +1,19 @@
+/* SANDEVAUX — Webfonts
+ * Sandbox of Development Auxiliary. A developer-tools brand: geometric display,
+ * clean UI sans (bilingual EN · KR), and a real monospace.
+ *
+ * BILINGUAL TONE: the body/UI voice is Pretendard — a geometric, highly
+ * readable sans that covers BOTH Latin and Hangul in one family, so English and
+ * Korean read with the same tone and weight. It also serves as the Hangul
+ * fallback for the Latin display face (Space Grotesk has no Korean glyphs), so
+ * Korean headings keep a matching geometric register.
+ *
+ * SUBSTITUTION NOTE: freely-licensed families chosen to match the geometric
+ * wordmark. Swap for licensed/bespoke faces when supplied.
+ *   - Space Grotesk   -> Latin geometric display (echoes the wordmark)
+ *   - Pretendard      -> bilingual EN · KR body/UI + Hangul display fallback
+ *   - JetBrains Mono  -> code, terminal, and the uppercase micro-label voice
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
