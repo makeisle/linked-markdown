@@ -137,6 +137,9 @@ export function App() {
   const [stack, setStack] = useState<NavEntry[]>([]);
   const [editing, setEditing] = useState(false);
   const [linkCards, setLinkCards] = useState<LinkCard[]>([]);
+  // The ref index (src-id) currently hovered — via its link text or its card.
+  // Both the link and its card(s) light up, and the wire between them thickens.
+  const [hotSrc, setHotSrc] = useState<number | null>(null);
 
   const centerScroll = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
@@ -151,6 +154,8 @@ export function App() {
   const pendingRef = useRef<string | null>(null);
   const sectionsRef = useRef<Section[]>([]);
   const linkCardsRef = useRef<LinkCard[]>([]);
+  const hotSrcRef = useRef<number | null>(null);
+  const lastShownRef = useRef<{ el: HTMLButtonElement; src: HTMLElement; color: number; srcId: number }[]>([]);
 
   useEffect(() => {
     core.init(wasmUrl).then(() => setReady(true)).catch((e) => setError(String(e)));
@@ -178,6 +183,7 @@ export function App() {
 
   sectionsRef.current = sections;
   linkCardsRef.current = linkCards;
+  hotSrcRef.current = hotSrc;
 
   // Colour every ref by its own palette index — the ref's text, its card(s) and
   // its wire(s) all share that colour. Collect one card per (ref, target). Both
@@ -233,7 +239,7 @@ export function App() {
 
     // Only refs whose source is on-screen get a card, positioned at the source's
     // height (top = srcY − h/2).
-    type Item = { el: HTMLButtonElement; src: HTMLElement; color: number; srcY: number; h: number; top: number };
+    type Item = { el: HTMLButtonElement; src: HTMLElement; color: number; srcId: number; srcY: number; h: number; top: number };
     const items: Item[] = [];
     for (const card of linkCardsRef.current) {
       const el = cardRefs.current.get(card.id);
@@ -246,7 +252,7 @@ export function App() {
         continue;
       }
       const h = el.offsetHeight || 58;
-      items.push({ el, src, color: card.color, srcY, h, top: srcY - h / 2 });
+      items.push({ el, src, color: card.color, srcId: card.srcId, srcY, h, top: srcY - h / 2 });
     }
     items.sort((a, b) => a.srcY - b.srcY);
 
@@ -281,20 +287,23 @@ export function App() {
       }
       it.el.style.display = "";
       it.el.style.top = `${it.top}px`;
-      it.el.style.opacity = String(Math.max(0.5, 1 - (Math.abs(it.top + it.h / 2 - midY) / midY) * 0.5));
+      const isHot = it.srcId === hotSrcRef.current;
+      it.el.style.opacity = isHot ? "1" : String(Math.max(0.5, 1 - (Math.abs(it.top + it.h / 2 - midY) / midY) * 0.5));
       shown.push(it);
     }
+    lastShownRef.current = shown;
     drawWires(shown);
   };
 
   // Draw a leader line from each card to its source link's height on the
   // document's right edge. Purely visual, redrawn on every layout/scroll.
-  const drawWires = (visible: { el: HTMLButtonElement; src: HTMLElement; color: number }[]) => {
+  const drawWires = (visible: { el: HTMLButtonElement; src: HTMLElement; color: number; srcId: number }[]) => {
     const svg = wiresRef.current;
     const pane = centerScroll.current;
     if (!svg || !pane) return;
     const sr = svg.getBoundingClientRect();
     const pr = pane.getBoundingClientRect();
+    const hot = hotSrcRef.current;
     const parts: string[] = [];
     for (const it of visible) {
       const lr = it.src.getBoundingClientRect();
@@ -305,10 +314,12 @@ export function App() {
       const ty = cr.top + cr.height / 2 - sr.top;
       const col = PALETTE_HEX[it.color] ?? PALETTE_HEX[0];
       const dx = Math.max(24, (tx - sx) * 0.5);
-      const op = it.el.style.opacity || "1";
+      const isHot = hot != null && it.srcId === hot;
+      const op = isHot ? "1" : it.el.style.opacity || "1";
+      const w = isHot ? 2.8 : 1.6;
       parts.push(
-        `<path d="M ${sx} ${sy} C ${sx + dx} ${sy}, ${tx - dx} ${ty}, ${tx} ${ty}" fill="none" stroke="${col}" stroke-width="1.6" opacity="${op}"/>`,
-        `<circle cx="${sx}" cy="${sy}" r="3" fill="${col}" opacity="${op}"/>`,
+        `<path d="M ${sx} ${sy} C ${sx + dx} ${sy}, ${tx - dx} ${ty}, ${tx} ${ty}" fill="none" stroke="${col}" stroke-width="${w}" opacity="${op}"/>`,
+        `<circle cx="${sx}" cy="${sy}" r="${isHot ? 4.2 : 3}" fill="${col}" opacity="${op}"/>`,
       );
     }
     svg.innerHTML = parts.join("");
@@ -382,6 +393,19 @@ export function App() {
     layoutCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkCards]);
+
+  // Hovering a link or its card lights up the source link text and the wire.
+  useEffect(() => {
+    const root = centerRef.current;
+    if (root) {
+      root.querySelectorAll(".lmd-ref--hot").forEach((e) => e.classList.remove("lmd-ref--hot"));
+      if (hotSrc != null) {
+        root.querySelectorAll(`[data-src-id="${hotSrc}"]`).forEach((e) => e.classList.add("lmd-ref--hot"));
+      }
+    }
+    layoutCards(); // repositions (deterministic) + sets hot opacity + redraws wires
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotSrc]);
 
   const leftEntry = stack.length > 1 ? stack[stack.length - 2] : null;
   const leftReg = leftEntry ? docReg(leftEntry.key) : null;
@@ -473,6 +497,11 @@ export function App() {
     const first = refTargets(el.getAttribute("data-lmd-targets") ?? "")[0];
     if (first) followTarget(first);
   }
+  function onCenterOver(e: React.MouseEvent) {
+    const el = (e.target as HTMLElement).closest(".lmd-ref") as HTMLElement | null;
+    const id = el && el.dataset.srcId ? Number(el.dataset.srcId) : null;
+    setHotSrc((p) => (p === id ? p : id));
+  }
 
   if (error) return <div className="fatal">⚠ {error}</div>;
   if (!ready) return <div className="loading">Loading…</div>;
@@ -551,7 +580,14 @@ export function App() {
           <div className="doc-wrap">
             <div className="focusline" aria-hidden />
             <div className="doc doc--current" ref={centerScroll}>
-              <article className="doc__body" ref={centerRef} onClick={onCenterClick} dangerouslySetInnerHTML={{ __html: docHtml }} />
+              <article
+                className="doc__body"
+                ref={centerRef}
+                onClick={onCenterClick}
+                onMouseOver={onCenterOver}
+                onMouseLeave={() => setHotSrc(null)}
+                dangerouslySetInnerHTML={{ __html: docHtml }}
+              />
             </div>
           </div>
         </section>
@@ -563,9 +599,11 @@ export function App() {
               <button
                 key={card.id}
                 ref={(el) => cardRefs.current.set(card.id, el)}
-                className={`card lc-${card.color}${card.kind === "cross" ? " card--cross" : ""}`}
+                className={`card lc-${card.color}${card.kind === "cross" ? " card--cross" : ""}${card.srcId === hotSrc ? " is-hot" : ""}`}
                 data-dir="mid"
                 style={{ display: "none" }}
+                onMouseEnter={() => setHotSrc(card.srcId)}
+                onMouseLeave={() => setHotSrc(null)}
                 onClick={() => {
                   if (card.kind === "cross") {
                     const doc = crossDocs.get(card.docUuid!) ?? workspace.findByUuid(card.docUuid!);

@@ -344,6 +344,24 @@ body {
 
 /* ref spans (the source text of a link) */
 .doc__body .lmd-ref { cursor: pointer; }
+
+/* Hover coupling: link ↔ its card(s) light up together. */
+/* The ref highlight is painted with box-shadow only: an inset "fill" plus an
+   outer ring. (This engine gets stuck transitioning a color-mix background, but
+   box-shadow — which isn't in the ref's transition — applies reliably.) */
+.doc__body .lmd-ref.lmd-ref--hot {
+  border-radius: 3px;
+  font-weight: 700;
+  box-shadow:
+    inset 0 0 0 100px color-mix(in srgb, var(--lc, var(--link)) 24%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--lc, var(--link)) 34%, transparent);
+}
+.col--links .card.is-hot {
+  opacity: 1 !important;
+  border-color: var(--lc, var(--accent));
+  background: color-mix(in srgb, var(--lc, var(--accent)) 20%, var(--panel));
+  box-shadow: 0 10px 26px -14px color-mix(in srgb, var(--lc, var(--accent)) 85%, transparent);
+}
 .lc-multi { --lc: var(--text-dim); }
 .doc__body .lmd-ref.lc-multi {
   border-bottom: 1.5px dashed var(--text-dim);
