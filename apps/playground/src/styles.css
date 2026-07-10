@@ -376,7 +376,7 @@ body {
 .modeswitch__btn:hover { color: var(--text); }
 .modeswitch__btn.is-on { background: var(--surface-hover); color: var(--text); }
 
-.cols--compact { grid-template-columns: minmax(0, 1fr); }
+.cols--compact { grid-template-columns: minmax(0, 1fr); width: 100%; max-width: 1024px; margin-inline: auto; }
 
 /* The link-target tooltip (compact reader's stand-in for the links column). */
 .linktip {
