@@ -292,65 +292,72 @@ export function App() {
     // The focus line: the pane's vertical centre, in canvas coordinates.
     const midY = pane.getBoundingClientRect().top + pane.getBoundingClientRect().height / 2 - cRect.top;
 
-    // Only refs whose source is on-screen get a card, positioned at the source's
-    // height (top = srcY − h/2).
+    // Every card (not just on-screen ones) joins one contiguous list ordered by
+    // its source link's position. The list is then slid so the focus line falls
+    // at the same fractional spot among the cards as it does among the sources —
+    // so the card for the link at the focus sits centred on the focus line and
+    // the rest fan above/below it. The shift is interpolated from the
+    // continuously-moving source positions, so it slides smoothly with scroll
+    // rather than jumping as cards cross the column edges. Card membership is
+    // fixed (all cards always present), which is what keeps it from twitching.
     type Item = { el: HTMLButtonElement; src: HTMLElement; color: number; srcId: number; srcY: number; h: number; top: number };
+    const gap = 8;
     const items: Item[] = [];
     for (const card of linkCardsRef.current) {
       const el = cardRefs.current.get(card.id);
       if (!el) continue;
       const src = root.querySelector<HTMLElement>(`[data-src-id="${card.srcId}"]`);
-      const r = src?.getBoundingClientRect();
-      const srcY = r ? r.top + r.height / 2 - cRect.top : -1;
-      if (!src || srcY < 0 || srcY > H) {
+      if (!src) {
         el.style.display = "none";
         continue;
       }
+      el.style.display = ""; // make it measurable before we read its height
+      const r = src.getBoundingClientRect();
+      const srcY = r.top + r.height / 2 - cRect.top;
       const h = el.offsetHeight || 58;
-      items.push({ el, src, color: card.color, srcId: card.srcId, srcY, h, top: srcY - h / 2 });
+      items.push({ el, src, color: card.color, srcId: card.srcId, srcY, h, top: 0 });
     }
     items.sort((a, b) => a.srcY - b.srcY);
 
-    // Resolve overlaps by spreading *outward from the focus line*: the card whose
-    // source is nearest the line keeps its place; cards above are pushed up in
-    // distance order, cards below pushed down.
-    const gap = 8;
-    if (items.length) {
-      let pivot = 0;
-      let best = Infinity;
-      items.forEach((it, i) => {
-        const d = Math.abs(it.srcY - midY);
-        if (d < best) {
-          best = d;
-          pivot = i;
-        }
-      });
-      for (let i = pivot + 1; i < items.length; i++) {
-        items[i].top = Math.max(items[i].top, items[i - 1].top + items[i - 1].h + gap);
-      }
-      for (let i = pivot - 1; i >= 0; i--) {
-        items[i].top = Math.min(items[i].top, items[i + 1].top - gap - items[i].h);
-      }
-      // Centre the whole (non-overlapping) block on the focus line, so the cards
-      // straddle the focus symmetrically instead of drifting to one side.
-      const blockTop = items[0].top;
-      const blockBottom = items[items.length - 1].top + items[items.length - 1].h;
-      const delta = midY - (blockTop + blockBottom) / 2;
-      for (const it of items) it.top += delta;
-    }
-
     const shown: Item[] = [];
-    for (const it of items) {
-      // Overflow past the top/bottom of the column is hidden.
-      if (it.top < 4 || it.top + it.h > H - 4) {
-        it.el.style.display = "none";
-        continue;
+    if (items.length) {
+      const listTop: number[] = [];
+      let acc = 0;
+      for (const it of items) {
+        listTop.push(acc);
+        acc += it.h + gap;
       }
-      it.el.style.display = "";
-      it.el.style.top = `${it.top}px`;
-      const isHot = it.srcId === hotSrcRef.current;
-      it.el.style.opacity = isHot ? "1" : String(Math.max(0.5, 1 - (Math.abs(it.top + it.h / 2 - midY) / midY) * 0.5));
-      shown.push(it);
+      const centreOf = (i: number) => listTop[i] + items[i].h / 2;
+
+      // The list position that should land on the focus line, interpolated by
+      // srcY so it tracks the scroll continuously.
+      let centreListPos: number;
+      if (midY <= items[0].srcY) {
+        centreListPos = centreOf(0);
+      } else if (midY >= items[items.length - 1].srcY) {
+        centreListPos = centreOf(items.length - 1);
+      } else {
+        let k = 0;
+        while (k < items.length - 1 && items[k + 1].srcY <= midY) k++;
+        const span = items[k + 1].srcY - items[k].srcY || 1;
+        const t = (midY - items[k].srcY) / span;
+        centreListPos = centreOf(k) + t * (centreOf(k + 1) - centreOf(k));
+      }
+      const shift = midY - centreListPos;
+
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        it.top = listTop[i] + shift;
+        if (it.top + it.h < 4 || it.top > H - 4) {
+          it.el.style.display = "none";
+          continue;
+        }
+        it.el.style.display = "";
+        it.el.style.top = `${it.top}px`;
+        const isHot = it.srcId === hotSrcRef.current;
+        it.el.style.opacity = isHot ? "1" : String(Math.max(0.5, 1 - (Math.abs(it.top + it.h / 2 - midY) / midY) * 0.5));
+        shown.push(it);
+      }
     }
     lastShownRef.current = shown;
     drawWires(shown);
