@@ -14,7 +14,7 @@ test("wasm runtime: build + check + specVersion", { skip: hasWasm ? false : "pkg
   const core = await import("../src/index.js");
   await core.init(await readFile(wasmPath));
 
-  const src = "---\nlmd: 1\nid: d\nversion: 1\ntitle: T\n---\n\n## Auth <!--lmd:a auth-->\n\nSee [it](:auth).\n";
+  const src = "---\nlmd: 1\nid: d\nversion: 1\ntitle: T\n---\n\n## Auth <!--lmd:a auth-->\n\nSee <!--lmd:ref :auth-->it<!--/lmd-->.\n";
   const doc = await core.build(src);
 
   assert.deepEqual(Object.keys(doc.manifest!.nodes), ["auth"]);
