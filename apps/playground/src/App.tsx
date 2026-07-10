@@ -1,7 +1,7 @@
 import * as core from "@lmd/core";
 import { renderToHtml } from "@lmd/viewer";
 import * as React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import wasmUrl from "@lmd/core/pkg/lmd_wasm_bg.wasm?url";
 import { DEMO } from "./demo.js";
 import { EditorShell } from "./EditorShell.js";
@@ -160,7 +160,9 @@ export function App() {
       return false;
     }
   });
-  const [tip, setTip] = useState<{ cards: TipCard[]; x: number; y: number } | null>(null);
+  // The tooltip stores the anchor link's rect; final placement (flip above /
+  // below + clamp) is computed after render from the tooltip's measured size.
+  const [tip, setTip] = useState<{ cards: TipCard[]; rect: { top: number; bottom: number; left: number } } | null>(null);
 
   const centerScroll = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
@@ -179,6 +181,7 @@ export function App() {
   const lastShownRef = useRef<{ el: HTMLButtonElement; src: HTMLElement; color: number; srcId: number }[]>([]);
   const tipTimer = useRef<number | null>(null);
   const tipElRef = useRef<HTMLElement | null>(null);
+  const tipBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     core.init(wasmUrl).then(() => setReady(true)).catch((e) => setError(String(e)));
@@ -191,6 +194,27 @@ export function App() {
       /* ignore */
     }
   }, [compact]);
+
+  // Position the link tooltip after it renders: measure it, prefer below the
+  // link, flip above when it would overflow the bottom, and clamp horizontally.
+  useLayoutEffect(() => {
+    const el = tipBoxRef.current;
+    if (!el || !tip) return;
+    const gap = 6;
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const h = el.offsetHeight;
+    const w = el.offsetWidth;
+    let top = tip.rect.bottom + gap;
+    if (top + h > vh - 12) {
+      const above = tip.rect.top - gap - h;
+      top = above >= 12 ? above : Math.max(12, vh - 12 - h);
+    }
+    const left = Math.max(12, Math.min(tip.rect.left, vw - w - 12));
+    el.style.top = `${top}px`;
+    el.style.left = `${left}px`;
+    el.style.visibility = "visible";
+  }, [tip]);
 
   // The document currently in the centre column — the editable main doc, or a
   // read-only imported one we've navigated into.
@@ -560,9 +584,7 @@ export function App() {
       return;
     }
     const r = el.getBoundingClientRect();
-    const W = 320;
-    const x = Math.max(12, Math.min(r.left, window.innerWidth - W - 12));
-    setTip({ cards, x, y: r.bottom + 6 });
+    setTip({ cards, rect: { top: r.top, bottom: r.bottom, left: r.left } });
   }
 
   function onCenterClickTip(c: TipCard) {
@@ -744,7 +766,8 @@ export function App() {
       {tip && !editing && (
         <div
           className="linktip"
-          style={{ left: tip.x, top: tip.y }}
+          ref={tipBoxRef}
+          style={{ left: 0, top: 0, visibility: "hidden" }}
           onMouseEnter={cancelHideTip}
           onMouseLeave={hideTipSoon}
         >

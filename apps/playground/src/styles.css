@@ -381,10 +381,14 @@ body {
 /* The link-target tooltip (compact reader's stand-in for the links column). */
 .linktip {
   position: fixed; z-index: 50; width: 320px; max-width: calc(100vw - 24px);
+  max-height: min(62vh, 460px); overflow-y: auto; overscroll-behavior: contain;
   display: flex; flex-direction: column; gap: 6px; padding: 6px;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-lg); box-shadow: var(--shadow-3); animation: fade 0.12s ease;
 }
+.linktip::-webkit-scrollbar { width: 9px; }
+.linktip::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9px; border: 2px solid transparent; background-clip: padding-box; }
+.linktip__card { flex: none; }
 .linktip__card {
   display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
   background: color-mix(in srgb, var(--lc, var(--accent)) 8%, var(--surface));

@@ -15,7 +15,7 @@ export const DEMO = [
   "<!--lmd:ref :codegen-->code generation<!--/lmd--> — targets a machine. Between",
   "them sits an <!--lmd:ref :ir-->intermediate representation<!--/lmd-->.",
   "",
-  "In one line, <!--lmd:ref covers=:lexer,:parser,:sema,:ir,:optimizer,:codegen-->source",
+  "In one line, <!--lmd:ref covers=:lexer,:parser,:ast,:sema,:ir,:optimizer,:codegen-->source",
   "becomes tokens, a tree, checks, an IR, and finally machine code<!--/lmd-->.",
   "",
   "## Lexing <!--lmd:a lexer-->",
