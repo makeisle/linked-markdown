@@ -34,6 +34,17 @@ type RefTarget =
   | { kind: "local"; rel: string; slug: string }
   | { kind: "cross"; rel: string; alias: string; slug: string };
 
+/** A card shown in the compact viewer's hover tooltip. */
+interface TipCard {
+  kind: "local" | "cross";
+  slug: string;
+  alias?: string;
+  docUuid?: string;
+  title: string;
+  preview: string;
+  color: number;
+}
+
 const ANCHOR = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/;
 const ANCHOR_G = /<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/g;
 // Import table: alias → { id (durable UUID), path (drift-prone hint) }. `policy`
@@ -140,6 +151,16 @@ export function App() {
   // The ref index (src-id) currently hovered — via its link text or its card.
   // Both the link and its card(s) light up, and the wire between them thickens.
   const [hotSrc, setHotSrc] = useState<number | null>(null);
+  // Compact layout: center-only reader (links as a hover tooltip) + collapsible
+  // editor wing. Persisted so the choice sticks across reloads.
+  const [compact, setCompact] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("lmd-compact") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [tip, setTip] = useState<{ cards: TipCard[]; x: number; y: number } | null>(null);
 
   const centerScroll = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
@@ -156,10 +177,20 @@ export function App() {
   const linkCardsRef = useRef<LinkCard[]>([]);
   const hotSrcRef = useRef<number | null>(null);
   const lastShownRef = useRef<{ el: HTMLButtonElement; src: HTMLElement; color: number; srcId: number }[]>([]);
+  const tipTimer = useRef<number | null>(null);
+  const tipElRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     core.init(wasmUrl).then(() => setReady(true)).catch((e) => setError(String(e)));
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("lmd-compact", compact ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [compact]);
 
   // The document currently in the centre column — the editable main doc, or a
   // read-only imported one we've navigated into.
@@ -497,10 +528,75 @@ export function App() {
     const first = refTargets(el.getAttribute("data-lmd-targets") ?? "")[0];
     if (first) followTarget(first);
   }
+  // ── Compact viewer: link → anchor-card tooltip ──────────────────────────
+  function cancelHideTip() {
+    if (tipTimer.current) {
+      clearTimeout(tipTimer.current);
+      tipTimer.current = null;
+    }
+  }
+  function hideTipSoon() {
+    cancelHideTip();
+    tipTimer.current = window.setTimeout(() => {
+      setTip(null);
+      tipElRef.current = null;
+    }, 150);
+  }
+  function showTip(el: HTMLElement) {
+    const cm = el.className.match(/lc-(\d)/);
+    const color = cm ? Number(cm[1]) : 0;
+    const cards: TipCard[] = [];
+    for (const t of refTargets(el.getAttribute("data-lmd-targets") ?? "")) {
+      if (t.kind === "local") {
+        const sec = bySlug.get(t.slug);
+        if (sec) cards.push({ kind: "local", slug: t.slug, title: sec.title, preview: preview(sec.md), color });
+      } else {
+        const r = resolveCross(t.alias, t.slug);
+        if (r) cards.push({ kind: "cross", slug: t.slug, alias: t.alias, docUuid: r.doc.uuid, title: r.title, preview: r.doc.title, color });
+      }
+    }
+    if (!cards.length) {
+      hideTipSoon();
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    const W = 320;
+    const x = Math.max(12, Math.min(r.left, window.innerWidth - W - 12));
+    setTip({ cards, x, y: r.bottom + 6 });
+  }
+
+  function onCenterClickTip(c: TipCard) {
+    if (c.kind === "cross") {
+      const d = crossDocs.get(c.docUuid!) ?? workspace.findByUuid(c.docUuid!);
+      if (d) gotoDoc(d, c.slug);
+    } else {
+      goto(c.slug);
+    }
+    setTip(null);
+    tipElRef.current = null;
+  }
+
   function onCenterOver(e: React.MouseEvent) {
     const el = (e.target as HTMLElement).closest(".lmd-ref") as HTMLElement | null;
+    if (compact) {
+      if (el) {
+        cancelHideTip();
+        if (el !== tipElRef.current) {
+          tipElRef.current = el;
+          showTip(el);
+        }
+      } else {
+        tipElRef.current = null;
+        hideTipSoon();
+      }
+      return;
+    }
     const id = el && el.dataset.srcId ? Number(el.dataset.srcId) : null;
     setHotSrc((p) => (p === id ? p : id));
+  }
+  function onCenterLeave() {
+    if (compact) hideTipSoon();
+    else setHotSrc(null);
   }
 
   if (error) return <div className="fatal">⚠ {error}</div>;
@@ -526,6 +622,14 @@ export function App() {
             Focused on <span className="focustag">{current?.title}</span>
           </div>
         )}
+        <div className="modeswitch" role="group" aria-label="Layout">
+          <button className={`modeswitch__btn${!compact ? " is-on" : ""}`} onClick={() => setCompact(false)}>
+            Full
+          </button>
+          <button className={`modeswitch__btn${compact ? " is-on" : ""}`} onClick={() => setCompact(true)}>
+            Compact
+          </button>
+        </div>
       </header>
 
       {editing ? (
@@ -533,6 +637,7 @@ export function App() {
           initial={body}
           anchors={sections.map((s) => ({ slug: s.slug, title: s.title }))}
           imports={IMPORTS}
+          compact={compact}
           onSave={(b) => {
             setBody(b);
             setEditing(false);
@@ -540,33 +645,40 @@ export function App() {
           onCancel={() => setEditing(false)}
         />
       ) : (
-      <main className="cols cols--3">
-        <svg className="wires" ref={wiresRef} aria-hidden />
-        <section className="col col--prev">
-          <div className="col__label">
-            Previous
-            {leftEntry && (
-              <button className="editbtn" onClick={back} title="Back">
-                ← back
-              </button>
-            )}
-          </div>
-          {leftEntry && leftReg ? (
-            <div className="doc-wrap">
-              <div className="focusline focusline--sm" aria-hidden />
-              <div className="doc doc--ghost" onClick={back} title="Go back">
-                <article className="doc__body" ref={prevRef} dangerouslySetInnerHTML={{ __html: leftHtml }} />
-              </div>
-              <div className="doc__badge">{leftReg.title} · ← back</div>
+      <main className={compact ? "cols cols--compact" : "cols cols--3"}>
+        {!compact && <svg className="wires" ref={wiresRef} aria-hidden />}
+        {!compact && (
+          <section className="col col--prev">
+            <div className="col__label">
+              Previous
+              {leftEntry && (
+                <button className="editbtn" onClick={back} title="Back">
+                  ← back
+                </button>
+              )}
             </div>
-          ) : (
-            <div className="col__empty">No history yet — follow a link to build it.</div>
-          )}
-        </section>
+            {leftEntry && leftReg ? (
+              <div className="doc-wrap">
+                <div className="focusline focusline--sm" aria-hidden />
+                <div className="doc doc--ghost" onClick={back} title="Go back">
+                  <article className="doc__body" ref={prevRef} dangerouslySetInnerHTML={{ __html: leftHtml }} />
+                </div>
+                <div className="doc__badge">{leftReg.title} · ← back</div>
+              </div>
+            ) : (
+              <div className="col__empty">No history yet — follow a link to build it.</div>
+            )}
+          </section>
+        )}
 
         <section className="col col--current">
           <div className="col__label">
             {viewKey === MAIN_KEY ? "Document" : view.title}
+            {compact && view.editable && leftEntry && (
+              <button className="editbtn" onClick={back} title="Back">
+                ← back
+              </button>
+            )}
             {view.editable ? (
               <button className="editbtn" onClick={() => setEditing(true)}>
                 ✎ Edit
@@ -585,46 +697,73 @@ export function App() {
                 ref={centerRef}
                 onClick={onCenterClick}
                 onMouseOver={onCenterOver}
-                onMouseLeave={() => setHotSrc(null)}
+                onMouseLeave={onCenterLeave}
                 dangerouslySetInnerHTML={{ __html: docHtml }}
               />
             </div>
           </div>
         </section>
 
-        <section className="col col--links">
-          <div className="col__label">Links near focus</div>
-          <div className="cards-canvas" ref={canvasRef}>
-            {linkCards.map((card) => (
-              <button
-                key={card.id}
-                ref={(el) => cardRefs.current.set(card.id, el)}
-                className={`card lc-${card.color}${card.kind === "cross" ? " card--cross" : ""}${card.srcId === hotSrc ? " is-hot" : ""}`}
-                data-dir="mid"
-                style={{ display: "none" }}
-                onMouseEnter={() => setHotSrc(card.srcId)}
-                onMouseLeave={() => setHotSrc(null)}
-                onClick={() => {
-                  if (card.kind === "cross") {
-                    const doc = crossDocs.get(card.docUuid!) ?? workspace.findByUuid(card.docUuid!);
-                    if (doc) gotoDoc(doc, card.slug);
-                  } else {
-                    goto(card.slug);
-                  }
-                }}
-              >
-                {card.kind === "cross" && (
-                  <span className="card__ext">
-                    ↗ {card.alias}:{card.slug}
-                  </span>
-                )}
-                <span className="card__title">{card.title}</span>
-                <span className="card__preview">{card.preview}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+        {!compact && (
+          <section className="col col--links">
+            <div className="col__label">Links near focus</div>
+            <div className="cards-canvas" ref={canvasRef}>
+              {linkCards.map((card) => (
+                <button
+                  key={card.id}
+                  ref={(el) => cardRefs.current.set(card.id, el)}
+                  className={`card lc-${card.color}${card.kind === "cross" ? " card--cross" : ""}${card.srcId === hotSrc ? " is-hot" : ""}`}
+                  data-dir="mid"
+                  style={{ display: "none" }}
+                  onMouseEnter={() => setHotSrc(card.srcId)}
+                  onMouseLeave={() => setHotSrc(null)}
+                  onClick={() => {
+                    if (card.kind === "cross") {
+                      const doc = crossDocs.get(card.docUuid!) ?? workspace.findByUuid(card.docUuid!);
+                      if (doc) gotoDoc(doc, card.slug);
+                    } else {
+                      goto(card.slug);
+                    }
+                  }}
+                >
+                  {card.kind === "cross" && (
+                    <span className="card__ext">
+                      ↗ {card.alias}:{card.slug}
+                    </span>
+                  )}
+                  <span className="card__title">{card.title}</span>
+                  <span className="card__preview">{card.preview}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
+      )}
+
+      {tip && !editing && (
+        <div
+          className="linktip"
+          style={{ left: tip.x, top: tip.y }}
+          onMouseEnter={cancelHideTip}
+          onMouseLeave={hideTipSoon}
+        >
+          {tip.cards.map((c, i) => (
+            <button
+              key={`${c.kind}:${c.slug}:${i}`}
+              className={`linktip__card lc-${c.color}${c.kind === "cross" ? " card--cross" : ""}`}
+              onClick={() => onCenterClickTip(c)}
+            >
+              {c.kind === "cross" && (
+                <span className="card__ext">
+                  ↗ {c.alias}:{c.slug}
+                </span>
+              )}
+              <span className="card__title">{c.title}</span>
+              <span className="card__preview">{c.preview}</span>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

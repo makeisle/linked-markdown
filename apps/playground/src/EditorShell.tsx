@@ -24,15 +24,19 @@ export function EditorShell({
   initial,
   anchors,
   imports,
+  compact = false,
   onSave,
   onCancel,
 }: {
   initial: string;
   anchors: AnchorOption[];
   imports: Record<string, core.Import>;
+  compact?: boolean;
   onSave: (md: string) => void;
   onCancel: () => void;
 }) {
+  // The left wing collapses to a rail; in compact mode it starts collapsed.
+  const [railOpen, setRailOpen] = useState(!compact);
   // Import paths are editable so "relink" can adopt a detected move.
   const [paths, setPaths] = useState<Record<string, string>>(
     Object.fromEntries(Object.entries(imports).map(([a, im]) => [a, im.path ?? ""])),
@@ -112,11 +116,37 @@ export function EditorShell({
   })();
   const flyAlias = selected;
 
+  if (!railOpen) {
+    // Collapsed: a thin rail with a reopen affordance.
+    return (
+      <div className="eshell">
+        <aside className="eside eside--rail">
+          <button className="eside__open" title="Show linked documents" onClick={() => setRailOpen(true)}>
+            ›
+          </button>
+        </aside>
+        <main className="emain">
+          <SectionEditor
+            initial={initial}
+            anchors={anchors}
+            crossAnchors={crossAnchors}
+            onSave={onSave}
+            onCancel={onCancel}
+          />
+        </main>
+        {modal && <ModalViewer doc={modal.doc} slug={modal.slug} onClose={() => setModal(null)} />}
+      </div>
+    );
+  }
+
   return (
     <div className="eshell">
       <aside className="eside">
         <div className="eside__head">
           <span className="eside__title">Linked documents</span>
+          <button className="eside__collapse" title="Collapse" onClick={() => setRailOpen(false)}>
+            ‹
+          </button>
           <button className="eside__add" title="Add a reference document" onClick={() => setAdding((a) => !a)}>
             +
           </button>

@@ -364,6 +364,46 @@ body {
   background: color-mix(in srgb, var(--lc, var(--accent)) 20%, var(--panel));
   box-shadow: 0 10px 26px -14px color-mix(in srgb, var(--lc, var(--accent)) 85%, transparent);
 }
+
+/* ── Compact layout ──────────────────────────────────────────────────────── */
+.modeswitch { margin-left: auto; display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-pill); }
+.modeswitch__btn {
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: var(--track-label-tight, 0.08em);
+  color: var(--text-muted); background: none; border: 0; border-radius: var(--radius-pill);
+  padding: 4px 12px; cursor: pointer;
+}
+.modeswitch__btn:hover { color: var(--text); }
+.modeswitch__btn.is-on { background: var(--surface-hover); color: var(--text); }
+
+.cols--compact { grid-template-columns: minmax(0, 1fr); }
+
+/* The link-target tooltip (compact reader's stand-in for the links column). */
+.linktip {
+  position: fixed; z-index: 50; width: 320px; max-width: calc(100vw - 24px);
+  display: flex; flex-direction: column; gap: 6px; padding: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-3); animation: fade 0.12s ease;
+}
+.linktip__card {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+  background: color-mix(in srgb, var(--lc, var(--accent)) 8%, var(--surface));
+  border: 1px solid var(--border); border-left: 3px solid var(--lc, var(--accent));
+  border-radius: 8px; padding: 8px 11px; color: var(--text); cursor: pointer;
+}
+.linktip__card:hover { border-color: var(--lc, var(--accent)); background: color-mix(in srgb, var(--lc, var(--accent)) 16%, var(--surface)); }
+.linktip__card .card__ext { font-family: var(--font-mono); font-size: 10px; color: var(--text-subtle); }
+.linktip__card .card__title { font-weight: 600; font-size: 13px; }
+.linktip__card .card__preview { font-size: 11px; line-height: 1.4; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Collapsible editor wing */
+.eside.eside--rail { width: 44px; flex: none; align-items: center; padding: 14px 0; }
+.eside__open, .eside__collapse {
+  width: 26px; height: 26px; display: grid; place-items: center; flex: none;
+  border-radius: 7px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-muted); font-size: 15px; line-height: 1; cursor: pointer;
+}
+.eside__open:hover, .eside__collapse:hover { color: var(--text); border-color: var(--accent); }
 .lc-multi { --lc: var(--text-dim); }
 .doc__body .lmd-ref.lc-multi {
   border-bottom: 1.5px dashed var(--text-dim);
