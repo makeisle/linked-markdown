@@ -1,32 +1,16 @@
 /**
- * The Linked Markdown mark — a Sandevaux-brand logo (primary teal #227995 +
- * accent tan #d1a987, the same two brand colours as the design system).
+ * The Rimalk (링맑 · Linked Mark Down) COMPACT MARK — a teal ring (ㅇ) beside a
+ * teal square (ㅁ), each with a sand counter. Fills are driven by the design
+ * tokens so the mark stays on-theme. Pairs with the wordmark to form the lockup.
  */
 export function Logo({ className }: { className?: string }) {
   return (
-    <span className={className} aria-label="Linked Markdown" role="img">
-      <svg viewBox="88 40 640 552" xmlns="http://www.w3.org/2000/svg" shapeRendering="crispEdges">
-        <g fill="#227995">
-          <rect x="286" y="70" width="46" height="350" />
-          <rect x="146" y="136" width="140" height="46" />
-          <rect x="240" y="136" width="46" height="130" />
-          <rect x="176" y="220" width="110" height="46" />
-          <rect x="176" y="220" width="46" height="126" />
-          <rect x="176" y="300" width="110" height="46" />
-          <circle cx="309" cy="486" r="78" />
-          <rect x="548" y="70" width="46" height="276" />
-          <rect x="594" y="234" width="76" height="46" />
-          <rect x="404" y="130" width="150" height="150" />
-          <rect x="404" y="300" width="144" height="46" />
-          <rect x="502" y="300" width="46" height="140" />
-          <rect x="404" y="394" width="144" height="46" />
-          <rect x="404" y="394" width="46" height="166" />
-          <rect x="404" y="514" width="144" height="46" />
-          <rect x="594" y="300" width="76" height="46" />
-          <rect x="624" y="300" width="46" height="260" />
-        </g>
-        <circle cx="309" cy="486" r="32" fill="#d1a987" />
-        <rect x="450" y="176" width="58" height="58" fill="#d1a987" />
+    <span className={className} aria-label="Linked Mark Down" role="img">
+      <svg viewBox="0 0 296 140" xmlns="http://www.w3.org/2000/svg">
+        <circle className="mk-accent" cx="78" cy="70" r="62" />
+        <rect className="mk-accent" x="156" y="8" width="124" height="124" />
+        <circle className="mk-sand" cx="78" cy="70" r="28" />
+        <rect className="mk-sand" x="190" y="42" width="56" height="56" />
       </svg>
     </span>
   );

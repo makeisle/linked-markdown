@@ -513,7 +513,7 @@ export function App() {
       <header className="reader__bar">
         <div className="brand">
           <Logo className="brand__mark" />
-          <span className="brand__name">Linked Markdown</span>
+          <span className="brand__name">Linked Mark Down</span>
           <span className="brand__tag">{editing ? "editor" : "reader"}</span>
         </div>
         {editing ? (
