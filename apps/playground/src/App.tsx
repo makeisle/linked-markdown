@@ -331,6 +331,12 @@ export function App() {
       for (let i = pivot - 1; i >= 0; i--) {
         items[i].top = Math.min(items[i].top, items[i + 1].top - gap - items[i].h);
       }
+      // Centre the whole (non-overlapping) block on the focus line, so the cards
+      // straddle the focus symmetrically instead of drifting to one side.
+      const blockTop = items[0].top;
+      const blockBottom = items[items.length - 1].top + items[items.length - 1].h;
+      const delta = midY - (blockTop + blockBottom) / 2;
+      for (const it of items) it.top += delta;
     }
 
     const shown: Item[] = [];
