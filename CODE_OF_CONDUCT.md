@@ -24,8 +24,9 @@ information without explicit permission.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the maintainers. All complaints will be reviewed and investigated
-promptly and fairly.
+reported to the maintainers at **conduct@makeisle.com**. All complaints will be
+reviewed and investigated promptly and fairly, and the maintainers will respect
+the privacy and security of the reporter of any incident.
 
 The full text of the Contributor Covenant 2.1 governs this project and is
 available at

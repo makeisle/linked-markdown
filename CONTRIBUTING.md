@@ -32,11 +32,36 @@ cargo test
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 
-# JS side
+# JS side — build the wasm package first; the TS workspace depends on it.
 pnpm install
+pnpm run wasm          # wasm-pack build → packages/core/pkg
 pnpm -r build
 pnpm -r test
 ```
+
+> Editing anything under `crates/lmd-core` (or `lmd-wasm`)? Re-run `pnpm run wasm`
+> before `pnpm -r test`, or the JS tests run against a stale wasm build.
+
+## Running the demo locally
+
+```bash
+pnpm --filter @lmd/playground dev   # viewer + editor at http://localhost:5173
+pnpm --filter @lmd/docs dev         # documentation site
+```
+
+The hosted demo is built and deployed from `apps/playground` + `apps/docs` by
+`.github/workflows/pages.yml`.
+
+## Working on the Claude plugin / skill
+
+- The authoring **skill** lives in `skill/SKILL.md` and is mirrored into the
+  plugin under `plugins/linked-markdown/`.
+- The repo root is a Claude Code plugin **marketplace** (`.claude-plugin/marketplace.json`).
+  To try the plugin locally, add this repo as a marketplace in Claude Code and
+  install the `linked-markdown` plugin.
+- Provider-neutral and ChatGPT/Gemini authoring configs live under `integrations/`.
+  Keep the authoring rules in sync with `spec/SYNTAX.md` — that file is the source
+  of truth for the human-facing syntax.
 
 ## Commit / PR conventions
 

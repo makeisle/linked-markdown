@@ -97,10 +97,10 @@ id: 0192f3a1-…-req0001
 version: 1
 title: Requirements
 imports:
-  design: { id: 0192f3a1-…-design001, pin: "@7" }
+  design: { id: 0192f3a1-…-design001, path: "design.lmd", pin: "@7" }
 ---
 
-The flow is [use case: join](design:uc-join).
+Sign-up follows <!--lmd:ref design:uc-join-->the join use case<!--/lmd-->.
 ```
 
 Use the *target document's* `id` (from its front matter) as the import `id`. Pin
