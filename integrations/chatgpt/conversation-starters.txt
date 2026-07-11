@@ -1,0 +1,4 @@
+Turn this document into .lmd — add anchors and links
+What is Linked Markdown and why would I use it?
+Link this section to another document's anchor
+Review my .lmd and tell me what to run to validate it
