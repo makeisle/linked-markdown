@@ -40,7 +40,7 @@ is the source of truth for **connectivity**, not for floats.
 
 ## See it
 
-**Live demo** (viewer + editor): **https://makeisle.github.io/linked-markdown/**
+**Live demo** (viewer + editor): **https://makeisle.com/linked-markdown/**
 &nbsp;·&nbsp; run it locally: `pnpm --filter @lmd/playground dev`
 
 <p align="center"><img src="assets/demo-reader.svg" width="820" alt="The reader: clean prose in the centre, anchor cards and leader lines in the right column, centred on the focus line" /></p>

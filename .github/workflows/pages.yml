@@ -1,12 +1,18 @@
 name: Pages
 
-# Manual for now — nothing deploys until you run this workflow (Actions → Pages →
-# Run workflow) or uncomment the push trigger below. One-time setup: repository
-# Settings → Pages → Source = "GitHub Actions".
+# Deploys the docs site (/) + interactive playground (/play) to GitHub Pages on
+# every push to main, and on manual dispatch. Pages source is "GitHub Actions".
 on:
   workflow_dispatch: {}
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "crates/**"
+      - "spec/**"
+      - "assets/**"
+      - ".github/workflows/pages.yml"
 
 permissions:
   contents: read
