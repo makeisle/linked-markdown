@@ -1,0 +1,92 @@
+name: Release
+
+# Skeleton release pipeline. Each publish job is guarded on its registry token:
+# with no token configured it prints "skipped" and succeeds, so this never
+# publishes by accident. To activate a channel, add its secret (Settings →
+# Secrets and variables → Actions) and push a `vX.Y.Z` tag.
+#
+#   NPM_TOKEN             → npm (@lmd/* packages)
+#   CARGO_REGISTRY_TOKEN  → crates.io (lmd-core, lmd-cli)
+#   VSCE_PAT              → VS Code Marketplace (extensions/vscode)
+#   OVSX_PAT              → Open VSX (extensions/vscode)
+#
+# The Claude plugin marketplace is this git repo, so a tagged commit *is* the
+# release; the `validate` job just checks the manifests and version consistency.
+# The GPT Store and Gemini Gems have no publish API — they are submitted by hand
+# (see integrations/).
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate manifests + versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate plugin + marketplace manifests
+        run: node .github/scripts/validate-plugin.mjs
+
+  npm:
+    name: npm (@lmd/*)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then echo "NPM_TOKEN not set — skipping npm publish."; exit 0; fi
+          pnpm run wasm
+          pnpm install --frozen-lockfile
+          pnpm -r build
+          NODE_AUTH_TOKEN="$NPM_TOKEN" pnpm -r publish --access public --no-git-checks
+
+  crates:
+    name: crates.io (lmd-core, lmd-cli)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then echo "CARGO_REGISTRY_TOKEN not set — skipping crates.io publish."; exit 0; fi
+          cargo publish -p lmd-core
+          cargo publish -p lmd-cli
+
+  vscode:
+    name: VS Code Marketplace + Open VSX
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - working-directory: extensions/vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ] && [ -z "$OVSX_PAT" ]; then echo "No VSCE_PAT/OVSX_PAT — skipping extension publish."; exit 0; fi
+          npm ci || npm install
+          if [ -n "$VSCE_PAT" ]; then npx --yes @vscode/vsce publish -p "$VSCE_PAT"; else echo "VSCE_PAT not set — skipping VS Code Marketplace."; fi
+          if [ -n "$OVSX_PAT" ]; then npx --yes ovsx publish -p "$OVSX_PAT"; else echo "OVSX_PAT not set — skipping Open VSX."; fi
