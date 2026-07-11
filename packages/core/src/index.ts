@@ -24,8 +24,6 @@ interface WasmApi {
   spec_version(): number;
 }
 
-const WASM_MODULE = "../pkg/lmd_wasm.js";
-
 // ---- Model types (mirror of lmd-core's serde model) ----
 
 export type NodeKind =
@@ -82,7 +80,10 @@ let ready: Promise<WasmApi> | undefined;
 /** Initialize the wasm module. Idempotent; safe to await repeatedly. */
 export function init(input?: unknown): Promise<WasmApi> {
   if (!ready) {
-    ready = (import(WASM_MODULE) as Promise<WasmApi>).then(async (m) => {
+    // A string *literal* here so Vite/Rollup can statically analyze it and bundle
+    // the wasm glue (a variable specifier is left as a runtime path and 404s under
+    // a non-root base). Resolves to packages/core/pkg/lmd_wasm.js in Node too.
+    ready = (import("../pkg/lmd_wasm.js") as Promise<WasmApi>).then(async (m) => {
       // wasm-bindgen's `web` init takes a single options object; passing the
       // module source (bytes/URL/Module) under `module_or_path`. In the browser,
       // calling with no argument lets it fetch the sibling `.wasm`.
