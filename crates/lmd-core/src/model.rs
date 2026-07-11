@@ -37,8 +37,13 @@ pub struct Frontmatter {
 /// One entry of the `imports` table — a namespace alias resolving to another doc.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Import {
-    /// Target document UUID.
+    /// Target document UUID — the durable identity.
     pub id: String,
+    /// A hint to where the document lives (workspace-relative or network path).
+    /// Drift-prone: `id` is authoritative, but `path` is preserved verbatim so a
+    /// tool can re-locate a moved file by scanning for `id` and update the hint.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
     /// Resolved pinned version, e.g. `"@7"`. The lockfile's concrete pin.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pin: Option<String>,

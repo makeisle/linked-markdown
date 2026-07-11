@@ -6,6 +6,7 @@ title: OSS distribution setup — session note
 imports:
   guide:
     id: 0192f3a1-7c2e-7b3d-9f10-aa01example001
+    path: ../getting-started.lmd
 ---
 
 # OSS distribution setup <!--lmd:a summary-->

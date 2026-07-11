@@ -1,0 +1,57 @@
+---
+lmd: 1
+id: 0192f3a1-7c2e-7b3d-9f10-aa01path00001
+version: 1
+title: Conformance Imports Path
+imports:
+  design:
+    id: 0192f3a1-7c2e-7b3d-9f10-aa01design001
+    path: design.lmd
+    pin: '@7'
+---
+
+## Membership authentication <!--lmd:a cap-auth-->
+
+Users sign up through <!--lmd:ref impacts=design:uc-join-->a trusted path<!--/lmd-->,
+governed by <!--lmd:ref policy=design:perf@2-->the performance policy<!--/lmd-->.
+
+<!--lmd:manifest
+{
+  "schema": 1,
+  "body_hash": "sha256:4f16890cf21fadced42234d32ca94ba74e27b4d831aff517c4d7a2bf19beb0bd",
+  "nodes": {
+    "cap-auth": {
+      "uuid": "019f5000-cbb8-7882-bd6e-79e18b24e63d",
+      "kind": "heading",
+      "rev": 1,
+      "hash": "sha256:093e7244b0d5d54b495dca7bbcd2a8c702ebdb8893cd98cbc23e9de0c3fb9589"
+    }
+  },
+  "edges": [
+    {
+      "from": "cap-auth",
+      "rel": "impacts",
+      "to": "design:uc-join",
+      "resolved": {
+        "doc": "0192f3a1-7c2e-7b3d-9f10-aa01design001",
+        "version": 7
+      }
+    },
+    {
+      "from": "cap-auth",
+      "rel": "policy",
+      "to": "design:perf@2",
+      "resolved": {
+        "doc": "0192f3a1-7c2e-7b3d-9f10-aa01design001",
+        "version": 2
+      }
+    }
+  ],
+  "imports": {
+    "design": {
+      "id": "0192f3a1-7c2e-7b3d-9f10-aa01design001",
+      "version": 7
+    }
+  }
+}
+-->

@@ -44,3 +44,34 @@ pub fn serialize(doc: &Doc) -> Result<String> {
 
     Ok(out)
 }
+
+#[cfg(test)]
+mod tests {
+    // An import's `path` hint must survive parse → canonical serialize → parse.
+    // (Regression guard: `path` was in the spec + TS model before the Rust core
+    // preserved it, so a canonical build silently dropped it.)
+    #[test]
+    fn import_path_survives_canonical_round_trip() {
+        let src = "---\nlmd: 1\nid: 0192f3a1-7c2e-7b3d-9f10-aa01path00002\nversion: 1\ntitle: T\nimports:\n  design:\n    id: 0192f3a1-7c2e-7b3d-9f10-aa01design001\n    path: design.lmd\n    pin: '@7'\n---\n\n## H <!--lmd:a h-->\n\nSee <!--lmd:ref design:uc-join-->it<!--/lmd-->.\n";
+
+        let doc = crate::parse(src).expect("parse");
+        assert_eq!(
+            doc.frontmatter.imports["design"].path.as_deref(),
+            Some("design.lmd"),
+            "parse dropped imports.path"
+        );
+
+        let out = crate::format_str(src).expect("format");
+        assert!(
+            out.contains("path: design.lmd"),
+            "canonical output dropped imports.path:\n{out}"
+        );
+
+        let doc2 = crate::parse(&out).expect("re-parse");
+        assert_eq!(
+            doc2.frontmatter.imports["design"].path.as_deref(),
+            Some("design.lmd"),
+            "round-trip dropped imports.path"
+        );
+    }
+}
