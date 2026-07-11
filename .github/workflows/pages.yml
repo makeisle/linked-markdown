@@ -43,10 +43,10 @@ jobs:
       - run: pnpm run wasm
       - run: pnpm install --frozen-lockfile
       # Build the workspace; the playground picks up BASE_URL so its assets resolve
-      # under the docs site at /linked-markdown/play/.
+      # under the docs site at /play/.
       - name: Build workspace
         env:
-          BASE_URL: /linked-markdown/play/
+          BASE_URL: /play/
         run: pnpm -r build
       - name: Assemble site (docs at /, playground at /play)
         run: |
@@ -54,6 +54,8 @@ jobs:
           mkdir -p site/play
           cp -r apps/docs/.vitepress/dist/. site/
           cp -r apps/playground/dist/. site/play/
+          # Custom domain for this repo's Pages site.
+          echo "linked-markdown.sandevaux.com" > site/CNAME
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

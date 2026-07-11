@@ -4,9 +4,9 @@ export default defineConfig({
   title: "Linked Markdown",
   description:
     "Markdown you read as plain prose — and that AI and tools read as a typed knowledge graph.",
-  // Project site: https://makeisle.com/linked-markdown/ (org custom domain). The
-  // interactive playground is deployed alongside these docs at <base>/play/.
-  base: "/linked-markdown/",
+  // Served at its own subdomain https://linked-markdown.sandevaux.com/, so the
+  // base is root. The interactive playground is deployed alongside at /play/.
+  base: "/",
   // The spec/syntax pages @include the canonical files from `spec/`, which carry
   // repo-relative links (to GOVERNANCE.md, conformance/, …) that don't resolve
   // inside the docs site. Don't fail the build on those.

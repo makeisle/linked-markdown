@@ -1,8 +1,9 @@
 # Linked Markdown Specification — v1
 
 > Status: **frozen** for the v1 milestones. Changes follow the process in
-> [`../GOVERNANCE.md`](../GOVERNANCE.md) and must be pinned by a fixture in
-> [`../conformance/`](../conformance/).
+> [`GOVERNANCE.md`](https://github.com/makeisle/linked-markdown/blob/main/GOVERNANCE.md)
+> and must be pinned by a fixture in
+> [`conformance/`](https://github.com/makeisle/linked-markdown/tree/main/conformance).
 
 Linked Markdown (`.lmd`) is Markdown that additionally encodes a typed link
 graph, stable per-block identity, cross-document namespace imports, and
@@ -250,8 +251,9 @@ format does not interpret these strings; a consumer defines their meaning.
 ## 10. Conformance
 
 An implementation is conformant when it passes the fixtures in
-[`../conformance/`](../conformance/). The Rust crate `lmd-core` is the reference
-implementation, but the fixtures — not the crate — are the contract.
+[`conformance/`](https://github.com/makeisle/linked-markdown/tree/main/conformance).
+The Rust crate `lmd-core` is the reference implementation, but the fixtures — not
+the crate — are the contract.
 
 ## 11. Future (v2 candidates)
 

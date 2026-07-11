@@ -1,6 +1,7 @@
 # Linked Markdown — Syntax Guide
 
-A friendly, example-first tour. For the normative rules see [`SPEC.md`](SPEC.md).
+A friendly, example-first tour. For the normative rules see
+[`SPEC.md`](https://github.com/makeisle/linked-markdown/blob/main/spec/SPEC.md).
 
 ## The one-minute version
 

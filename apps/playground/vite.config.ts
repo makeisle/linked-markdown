@@ -2,8 +2,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  // `/` for local dev and CI. The Pages workflow sets BASE_URL=/linked-markdown/play/
-  // so the built demo sits under the docs site.
+  // `/` for local dev and CI. The Pages workflow sets BASE_URL=/play/ so the built
+  // demo sits under the docs site (linked-markdown.sandevaux.com/play/).
   base: process.env.BASE_URL ?? "/",
   plugins: [react()],
   // The wasm glue uses top-level dynamic import + `new URL(...)`; keep esbuild
