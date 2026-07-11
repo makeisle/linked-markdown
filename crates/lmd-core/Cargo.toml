@@ -8,6 +8,8 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
+keywords = ["markdown", "linked-markdown", "knowledge-graph", "documentation", "parser"]
+categories = ["parser-implementations", "text-processing"]
 
 [dependencies]
 serde.workspace = true

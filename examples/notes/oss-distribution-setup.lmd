@@ -1,0 +1,91 @@
+---
+lmd: 1
+id: 4db6b5bf-6d6c-418f-910f-464b96bee765
+version: 1
+title: OSS distribution setup — session note
+imports:
+  guide:
+    id: 0192f3a1-7c2e-7b3d-9f10-aa01example001
+---
+
+# OSS distribution setup <!--lmd:a summary-->
+
+This session prepared Linked Markdown for open-source distribution: it rewrote the
+project docs, wired up a hosted demo, packaged a Claude plugin, added ChatGPT and
+Gemini authoring configs, and stubbed a release pipeline. It builds on
+<!--lmd:ref source=guide:intro-->the format's getting-started guide<!--/lmd-->.
+
+This note itself was produced by the plugin's `/lmd-capture` command — an example of
+turning a working session into a linked note.
+
+## Decisions <!--lmd:a decisions-->
+
+- The GitHub Pages site hosts the docs at the root and the interactive playground at
+  `/play`; deployment stays manual until explicitly enabled.
+- The Claude plugin is **file-based** (no background server): it authors and links
+  `.lmd` files and reads the graph through the `lmd` CLI. This scope was chosen to
+  keep <!--lmd:ref impacts=:plan-->the first version<!--/lmd--> small.
+- ChatGPT and Gemini get instructions-based configs; the GPT Store and Gemini Gems
+  have no publish API, so they are submitted by hand.
+
+## Plan and next steps <!--lmd:a plan-->
+
+- Enable GitHub Pages (Settings → Pages → GitHub Actions) and run the Pages workflow.
+- Replace the demo mockups with a real recorded GIF once the demo is hosted.
+- Add registry tokens to activate the guarded release channels (npm, crates.io,
+  VS Code Marketplace, Open VSX).
+
+## Files touched <!--lmd:a touched-->
+
+- `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` — rewritten or updated.
+- `.github/workflows/pages.yml`, `.github/workflows/release.yml`,
+  `.github/scripts/validate-plugin.mjs`.
+- `plugins/linked-markdown/` — the Claude plugin (skill, commands, session hook).
+- `integrations/` — the provider-neutral, ChatGPT, and Gemini authoring configs.
+
+<!--lmd:manifest
+{
+  "schema": 1,
+  "body_hash": "sha256:5cd8b1c3fff8f6020d3fd91d9ca6402def85c292a094589db2988b92504ff3a6",
+  "nodes": {
+    "decisions": {
+      "uuid": "019f4fee-9866-7681-bb33-c3fa262fa1bc",
+      "kind": "heading",
+      "rev": 1,
+      "hash": "sha256:a69ccdf682630a3a88d62385b6c2895d5410b7f36ee52d046c9e8403a33b8eaa"
+    },
+    "plan": {
+      "uuid": "019f4fee-9866-7681-bb33-c408335045c6",
+      "kind": "heading",
+      "rev": 1,
+      "hash": "sha256:a4f8d9e419ae38f3da11878ca5ce387f2e80da442dfdc45399a9f2257fac3c66"
+    },
+    "summary": {
+      "uuid": "019f4fee-9866-7681-bb33-c3e1d62ac856",
+      "kind": "heading",
+      "rev": 1,
+      "hash": "sha256:7ac211d0b6130ed09417564847a80b9202ea9290e300f9ca5cec0a237cd18dbb"
+    },
+    "touched": {
+      "uuid": "019f4fee-9866-7681-bb33-c41ea02ae6ae",
+      "kind": "heading",
+      "rev": 1,
+      "hash": "sha256:ebfff0da78469616070b99b006afc74f27c6cb9511187cd7b64b9dee368ff3e0"
+    }
+  },
+  "edges": [
+    {
+      "from": "decisions",
+      "rel": "impacts",
+      "to": ":plan",
+      "uuid": "019f4fee-9866-7681-bb33-c408335045c6"
+    },
+    {
+      "from": "summary",
+      "rel": "source",
+      "to": "guide:intro"
+    }
+  ],
+  "imports": {}
+}
+-->

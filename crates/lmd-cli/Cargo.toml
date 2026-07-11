@@ -8,6 +8,8 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
+keywords = ["cli", "markdown", "linked-markdown", "documentation"]
+categories = ["command-line-utilities", "text-processing"]
 
 [[bin]]
 name = "lmd"
