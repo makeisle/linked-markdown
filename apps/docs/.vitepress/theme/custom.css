@@ -1,0 +1,62 @@
+/* Sandevaux design system, mapped onto VitePress theme variables.
+   Brand teal #227995 + sand #D1A987; Space Grotesk display, Pretendard body
+   (bilingual EN·KR), JetBrains Mono for code. */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap");
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
+
+:root {
+  --sdv-teal: #227995;
+  --sdv-teal-light: #4795AE;
+  --sdv-teal-lighter: #84BACB;
+  --sdv-sand: #D1A987;
+
+  /* Fonts */
+  --vp-font-family-base: "Pretendard", "Inter", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --vp-font-family-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, Menlo, monospace;
+
+  /* Brand accent (light theme) */
+  --vp-c-brand-1: var(--sdv-teal);
+  --vp-c-brand-2: #1c6379;
+  --vp-c-brand-3: #164e5f;
+  --vp-c-brand-soft: rgba(34, 121, 149, 0.12);
+
+  /* Home hero: the "Linked Mark Down" wordmark reads teal → sand, like the app. */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, var(--sdv-teal), var(--sdv-sand));
+  --vp-home-hero-image-background-image: radial-gradient(
+    circle at 50% 40%,
+    rgba(34, 121, 149, 0.24),
+    rgba(209, 169, 135, 0.14)
+  );
+  --vp-home-hero-image-filter: blur(56px);
+
+  --vp-button-brand-bg: var(--sdv-teal);
+  --vp-button-brand-hover-bg: #1c6379;
+  --vp-button-brand-active-bg: #164e5f;
+}
+
+.dark {
+  /* Lighter teal reads better on the ink background. */
+  --vp-c-brand-1: var(--sdv-teal-light);
+  --vp-c-brand-2: var(--sdv-teal-lighter);
+  --vp-c-brand-3: #bcd9e2;
+  --vp-c-brand-soft: rgba(71, 149, 174, 0.16);
+}
+
+/* Display face (Space Grotesk) for headings + the wordmark, echoing the app. */
+.VPHero .name,
+.VPHero .text,
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.VPNavBarTitle .text {
+  font-family: "Space Grotesk", "Pretendard", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* The nav wordmark, matching the viewer header (teal, tight). */
+.VPNavBarTitle .text {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--vp-c-brand-1);
+}

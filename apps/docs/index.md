@@ -2,9 +2,12 @@
 layout: home
 
 hero:
-  name: Linked Markdown
+  name: Linked Mark Down
   text: A document is a graph
   tagline: Markdown you read as plain prose — and that AI and tools read as a typed knowledge graph.
+  image:
+    src: /logo.svg
+    alt: Linked Mark Down
   actions:
     - theme: brand
       text: Try it live
