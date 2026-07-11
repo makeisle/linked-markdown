@@ -56,6 +56,8 @@ body {
   backdrop-filter: blur(8px);
 }
 .brand { display: flex; align-items: center; gap: 9px; flex: none; }
+.brand__home { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: inherit; border-radius: 8px; }
+.brand__home:hover { opacity: 0.85; }
 .brand__mark { display: inline-flex; align-items: center; height: 20px; }
 .brand__mark svg { height: 20px; width: auto; display: block; }
 .brand__mark .mk-accent { fill: var(--teal-400); }

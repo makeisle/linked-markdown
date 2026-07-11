@@ -658,8 +658,10 @@ export function App() {
     <div className="reader">
       <header className="reader__bar">
         <div className="brand">
-          <Logo className="brand__mark" />
-          <span className="brand__name">Linked Mark Down</span>
+          <a className="brand__home" href="/" title="Linked Mark Down — home">
+            <Logo className="brand__mark" />
+            <span className="brand__name">Linked Mark Down</span>
+          </a>
           <span className="brand__tag">{editing ? "editor" : "reader"}</span>
         </div>
         {editing ? (
