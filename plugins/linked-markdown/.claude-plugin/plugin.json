@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin.json",
+  "name": "linked-markdown",
+  "description": "Author .lmd documents and connect a project's conversations, plans, and reference docs into a typed link graph — recall you don't have to grep for.",
+  "version": "0.1.0",
+  "author": { "name": "makeisle", "url": "https://github.com/makeisle" },
+  "homepage": "https://github.com/makeisle/linked-markdown",
+  "repository": "https://github.com/makeisle/linked-markdown",
+  "license": "Apache-2.0",
+  "keywords": ["lmd", "linked-markdown", "knowledge-graph", "memory", "documentation"]
+}
