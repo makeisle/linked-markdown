@@ -7,14 +7,15 @@ hero:
   tagline: Markdown you read as plain prose — and that AI and tools read as a typed knowledge graph.
   actions:
     - theme: brand
+      text: Try it live
+      link: /play/
+      target: _self
+    - theme: alt
       text: Get started
       link: /guide/getting-started
     - theme: alt
       text: Syntax guide
       link: /guide/syntax
-    - theme: alt
-      text: Specification
-      link: /guide/spec
 
 features:
   - title: Looks like Markdown

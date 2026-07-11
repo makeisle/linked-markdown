@@ -4,6 +4,9 @@ export default defineConfig({
   title: "Linked Markdown",
   description:
     "Markdown you read as plain prose — and that AI and tools read as a typed knowledge graph.",
+  // Project site: https://makeisle.github.io/linked-markdown/. The interactive
+  // playground is deployed alongside these docs at <base>/play/.
+  base: "/linked-markdown/",
   // The spec/syntax pages @include the canonical files from `spec/`, which carry
   // repo-relative links (to GOVERNANCE.md, conformance/, …) that don't resolve
   // inside the docs site. Don't fail the build on those.
@@ -13,12 +16,14 @@ export default defineConfig({
       { text: "Guide", link: "/guide/getting-started" },
       { text: "Syntax", link: "/guide/syntax" },
       { text: "Spec", link: "/guide/spec" },
+      { text: "Try it live", link: "/play/", target: "_self" },
     ],
     sidebar: [
       {
         text: "Guide",
         items: [
           { text: "Getting started", link: "/guide/getting-started" },
+          { text: "The live demo", link: "/guide/demo" },
           { text: "Syntax guide", link: "/guide/syntax" },
         ],
       },

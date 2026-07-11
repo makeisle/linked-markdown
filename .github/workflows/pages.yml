@@ -1,0 +1,64 @@
+name: Pages
+
+# Manual for now — nothing deploys until you run this workflow (Actions → Pages →
+# Run workflow) or uncomment the push trigger below. One-time setup: repository
+# Settings → Pages → Source = "GitHub Actions".
+on:
+  workflow_dispatch: {}
+  # push:
+  #   branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build site (docs + playground)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm run wasm
+      - run: pnpm install --frozen-lockfile
+      # Build the workspace; the playground picks up BASE_URL so its assets resolve
+      # under the docs site at /linked-markdown/play/.
+      - name: Build workspace
+        env:
+          BASE_URL: /linked-markdown/play/
+        run: pnpm -r build
+      - name: Assemble site (docs at /, playground at /play)
+        run: |
+          rm -rf site
+          mkdir -p site/play
+          cp -r apps/docs/.vitepress/dist/. site/
+          cp -r apps/playground/dist/. site/play/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
