@@ -163,6 +163,9 @@ export function App() {
   // The tooltip stores the anchor link's rect; final placement (flip above /
   // below + clamp) is computed after render from the tooltip's measured size.
   const [tip, setTip] = useState<{ cards: TipCard[]; rect: { top: number; bottom: number; left: number } } | null>(null);
+  // Light/dark theme, shared with the docs site via the same origin's localStorage
+  // key (VitePress's). The pre-paint script in index.html sets the initial class.
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains("theme-dark"));
 
   const centerScroll = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
@@ -634,6 +637,18 @@ export function App() {
     else setHotSrc(null);
   }
 
+  function toggleTheme() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("theme-dark", next);
+    try {
+      // Same key VitePress uses, so the choice carries to/from the docs site.
+      localStorage.setItem("vitepress-theme-appearance", next ? "dark" : "light");
+    } catch {
+      /* ignore */
+    }
+  }
+
   if (error) return <div className="fatal">⚠ {error}</div>;
   if (!ready) return <div className="loading">Loading…</div>;
 
@@ -657,6 +672,25 @@ export function App() {
             Focused on <span className="focustag">{current?.title}</span>
           </div>
         )}
+        <button
+          className="themebtn"
+          onClick={toggleTheme}
+          title={dark ? "Switch to light" : "Switch to dark"}
+          aria-label="Toggle theme"
+        >
+          {dark ? (
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden>
+              <circle cx="12" cy="12" r="4.5" fill="currentColor" />
+              <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5 5l1.7 1.7M17.3 17.3L19 19M19 5l-1.7 1.7M6.7 17.3L5 19" />
+              </g>
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden>
+              <path d="M20 14.5A8 8 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5z" fill="currentColor" />
+            </svg>
+          )}
+        </button>
         <div className="modeswitch" role="group" aria-label="Layout">
           <button className={`modeswitch__btn${!compact ? " is-on" : ""}`} onClick={() => setCompact(false)}>
             Full
