@@ -7,6 +7,8 @@ WebAssembly — the same code the CLI uses). Nothing is uploaded; it's all local
 It loads a densely cross-linked sample document so you can feel how the link graph
 behaves. Here's what to try.
 
+![The reader — prose in the centre, anchor cards and leader lines centred on the focus line](/demo-reader.svg)
+
 ## Reader
 
 The centre column renders the `.lmd` as clean prose — the `<!--lmd:… -->` comments
@@ -34,6 +36,8 @@ The header has a **Full / Compact** toggle:
   targets). Cleaner for focused reading.
 
 ## Editor
+
+![The editor — a linked-documents sidebar beside raw Markdown with the scaffolding in sand and identifiers in teal](/demo-editor.svg)
 
 Click **✎ Edit** to open the editor. It is deliberately a **plain raw-Markdown
 textarea** — you write normal Markdown; the only extra is linking.

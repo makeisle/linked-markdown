@@ -43,6 +43,8 @@ is the source of truth for **connectivity**, not for floats.
 **Live demo** (viewer + editor): **https://makeisle.github.io/linked-markdown/**
 &nbsp;·&nbsp; run it locally: `pnpm --filter @lmd/playground dev`
 
+<p align="center"><img src="assets/demo-reader.svg" width="820" alt="The reader: clean prose in the centre, anchor cards and leader lines in the right column, centred on the focus line" /></p>
+
 The demo shows the two-panel experience:
 
 - a **reader** that renders `.lmd` as clean prose, with the link graph surfaced
@@ -51,6 +53,10 @@ The demo shows the two-panel experience:
 - an **editor** — a plain raw-Markdown textarea where typing `@` (or `<!--lmd:ref `)
   opens an autocomplete to link a span to one or more anchors, with a sidebar that
   manages the documents you import and detects when a linked file has moved.
+
+<p align="center"><img src="assets/demo-editor.svg" width="820" alt="The editor: a linked-documents sidebar (found / moved / missing) beside raw Markdown with the escape-comment scaffolding in sand and the identifiers in teal" /></p>
+
+<sub>Illustrative mockups of the UI. Try the real thing at the live demo above.</sub>
 
 ## What a `.lmd` looks like
 

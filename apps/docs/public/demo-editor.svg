@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif">
+  <rect width="1200" height="640" fill="#0C1416"/>
+
+  <!-- top bar -->
+  <rect width="1200" height="52" fill="#101A1C"/>
+  <line x1="0" y1="52" x2="1200" y2="52" stroke="#1b2426"/>
+  <g transform="translate(20,17) scale(0.135)">
+    <circle cx="78" cy="70" r="62" fill="#4795AE"/>
+    <rect x="156" y="8" width="124" height="124" fill="#4795AE"/>
+    <circle cx="78" cy="70" r="28" fill="#D1A987"/>
+    <rect x="190" y="42" width="56" height="56" fill="#D1A987"/>
+  </g>
+  <text x="66" y="32" font-size="16" font-weight="600" fill="#84BACB">Linked Mark Down</text>
+  <rect x="212" y="17" width="50" height="18" rx="9" fill="none" stroke="#26312e"/>
+  <text x="237" y="30" font-family="ui-monospace, monospace" font-size="10" fill="#57676E" text-anchor="middle">editor</text>
+  <text x="300" y="31" font-size="12.5" fill="#8A9099">Editing <tspan fill="#84BACB">Demo</tspan></text>
+
+  <!-- linked-documents sidebar -->
+  <rect x="0" y="52" width="300" height="588" fill="#0E1518"/>
+  <line x1="300" y1="52" x2="300" y2="640" stroke="#1b2426"/>
+  <text x="16" y="86" font-family="ui-monospace, monospace" font-size="10" letter-spacing="1.4" fill="#57676E">LINKED DOCUMENTS</text>
+  <rect x="266" y="72" width="20" height="20" rx="6" fill="none" stroke="#26312e"/>
+  <text x="276" y="87" font-size="15" fill="#8A9099" text-anchor="middle">+</text>
+
+  <!-- design (found) -->
+  <circle cx="24" cy="116" r="4" fill="#227995"/>
+  <text x="38" y="120" font-size="13" font-weight="600" fill="#F1F4F4">design</text>
+  <text x="286" y="120" font-family="ui-monospace, monospace" font-size="10.5" fill="#57676E" text-anchor="end">design/architecture.lmd</text>
+
+  <!-- policy (moved) -->
+  <circle cx="24" cy="150" r="4" fill="#E0A106"/>
+  <text x="38" y="154" font-size="13" font-weight="600" fill="#F1F4F4">policy</text>
+  <text x="286" y="154" font-family="ui-monospace, monospace" font-size="10.5" fill="#E0A106" text-anchor="end" text-decoration="line-through">policy/security.lmd</text>
+  <text x="38" y="176" font-size="11" fill="#E0A106">moved → <tspan font-family="ui-monospace, monospace" fill="#f0c777">policy/v2/security.lmd</tspan></text>
+  <rect x="222" y="164" width="52" height="18" rx="9" fill="#173039" stroke="#3a6f80"/>
+  <text x="248" y="177" font-size="10.5" fill="#84BACB" text-anchor="middle">Relink</text>
+
+  <!-- glossary (found) -->
+  <circle cx="24" cy="206" r="4" fill="#227995"/>
+  <text x="38" y="210" font-size="13" font-weight="600" fill="#F1F4F4">glossary</text>
+  <text x="286" y="210" font-family="ui-monospace, monospace" font-size="10.5" fill="#57676E" text-anchor="end">reference/glossary.lmd</text>
+
+  <!-- legacy (missing) -->
+  <rect x="8" y="228" width="284" height="52" rx="10" fill="#1a1315"/>
+  <circle cx="24" cy="244" r="4" fill="#E5484D"/>
+  <text x="38" y="248" font-size="13" font-weight="600" fill="#F1F4F4">legacy</text>
+  <text x="286" y="248" font-family="ui-monospace, monospace" font-size="10.5" fill="#E5484D" text-anchor="end" text-decoration="line-through">archive/old-spec.lmd</text>
+  <text x="38" y="270" font-size="11" fill="#E5484D">not found by UUID</text>
+  <rect x="150" y="258" width="76" height="18" rx="9" fill="#101A1C" stroke="#26312e"/>
+  <text x="188" y="271" font-size="10.5" fill="#8A9099" text-anchor="middle">Delete links</text>
+  <rect x="232" y="258" width="44" height="18" rx="9" fill="#101A1C" stroke="#26312e"/>
+  <text x="254" y="271" font-size="10.5" fill="#8A9099" text-anchor="middle">Keep</text>
+
+  <!-- editor main -->
+  <rect x="316" y="68" width="868" height="556" rx="12" fill="#101A1C" stroke="#1b2426"/>
+  <rect x="316" y="68" width="868" height="40" rx="12" fill="#0E1416"/>
+  <rect x="316" y="96" width="868" height="12" fill="#0E1416"/>
+  <text x="336" y="93" font-size="12" fill="#8A9099">Editing — raw Markdown</text>
+  <text x="470" y="93" font-family="ui-monospace, monospace" font-size="11" fill="#57676E">type @ to link</text>
+  <rect x="1030" y="76" width="62" height="24" rx="7" fill="#101A1C" stroke="#26312e"/>
+  <text x="1061" y="92" font-size="12" fill="#8A9099" text-anchor="middle">Cancel</text>
+  <rect x="1100" y="76" width="66" height="24" rx="7" fill="#227995"/>
+  <text x="1133" y="92" font-size="12" fill="#ffffff" font-weight="600" text-anchor="middle">Save</text>
+
+  <!-- highlighted raw markdown: scaffolding (sand) recedes, identifiers (teal) pop -->
+  <g font-family="ui-monospace, JetBrains Mono, monospace" font-size="12.5">
+    <text x="340" y="146"><tspan fill="#cfd6d7"># How a compiler works </tspan><tspan fill="#B58E6C">&lt;!--lmd:a </tspan><tspan fill="#4795AE" font-weight="600">overview</tspan><tspan fill="#B58E6C">--&gt;</tspan></text>
+    <text x="340" y="180" fill="#cfd6d7">A compiler turns source code into a program a machine can run. It</text>
+    <text x="340" y="200" fill="#cfd6d7">works in stages: the front end —</text>
+    <text x="340" y="220"><tspan fill="#B68E6C">&lt;!--lmd:ref </tspan><tspan fill="#4795AE" font-weight="600">:lexer</tspan><tspan fill="#B68E6C">--&gt;</tspan><tspan fill="#cfd6d7">lexing</tspan><tspan fill="#B68E6C">&lt;!--/lmd--&gt;</tspan><tspan fill="#cfd6d7">, </tspan><tspan fill="#B68E6C">&lt;!--lmd:ref </tspan><tspan fill="#4795AE" font-weight="600">:parser</tspan><tspan fill="#B68E6C">--&gt;</tspan><tspan fill="#cfd6d7">parsing</tspan><tspan fill="#B68E6C">&lt;!--/lmd--&gt;</tspan><tspan fill="#cfd6d7">,</tspan></text>
+    <text x="340" y="240" fill="#cfd6d7">and semantic analysis — while the back end targets a machine.</text>
+    <text x="340" y="274"><tspan fill="#cfd6d7">## Lexing </tspan><tspan fill="#B68E6C">&lt;!--lmd:a </tspan><tspan fill="#4795AE" font-weight="600">lexer</tspan><tspan fill="#B68E6C">--&gt;</tspan></text>
+    <text x="340" y="308" fill="#cfd6d7">The lexer reads raw characters and groups them into</text>
+    <text x="340" y="328"><tspan fill="#cfd6d7">tokens, so the </tspan><tspan fill="#B68E6C">&lt;!--lmd:ref </tspan><tspan fill="#4795AE" font-weight="600">:parser</tspan><tspan fill="#B68E6C">--&gt;</tspan><tspan fill="#cfd6d7">parser</tspan><tspan fill="#B68E6C">&lt;!--/lmd--&gt;</tspan><tspan fill="#cfd6d7"> never sees them.</tspan></text>
+    <text x="340" y="362"><tspan fill="#cfd6d7">In one line, </tspan><tspan fill="#B68E6C">&lt;!--lmd:ref </tspan><tspan fill="#4795AE" font-weight="600">covers=:lexer,:parser,:ir</tspan><tspan fill="#B68E6C">--&gt;</tspan><tspan fill="#cfd6d7">source</tspan></text>
+    <text x="340" y="382"><tspan fill="#cfd6d7">becomes tokens, a tree, an IR, and machine code</tspan><tspan fill="#B68E6C">&lt;!--/lmd--&gt;</tspan><tspan fill="#cfd6d7">.</tspan></text>
+  </g>
+  <rect x="796" y="371" width="1.5" height="15" fill="#F1F4F4"/>
+</svg>

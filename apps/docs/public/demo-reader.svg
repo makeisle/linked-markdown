@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif">
+  <!-- page -->
+  <rect width="1200" height="640" fill="#0C1416"/>
+
+  <!-- top bar -->
+  <rect width="1200" height="52" fill="#101A1C"/>
+  <line x1="0" y1="52" x2="1200" y2="52" stroke="#1b2426" stroke-width="1"/>
+  <g transform="translate(20,17) scale(0.135)">
+    <circle cx="78" cy="70" r="62" fill="#4795AE"/>
+    <rect x="156" y="8" width="124" height="124" fill="#4795AE"/>
+    <circle cx="78" cy="70" r="28" fill="#D1A987"/>
+    <rect x="190" y="42" width="56" height="56" fill="#D1A987"/>
+  </g>
+  <text x="66" y="32" font-size="16" font-weight="600" fill="#84BACB">Linked Mark Down</text>
+  <rect x="212" y="17" width="52" height="18" rx="9" fill="none" stroke="#26312e"/>
+  <text x="238" y="30" font-family="ui-monospace, monospace" font-size="10" fill="#57676E" text-anchor="middle">reader</text>
+  <text x="812" y="31" font-size="12.5" fill="#8A9099" text-anchor="end">Focused on</text>
+  <rect x="820" y="18" width="66" height="19" rx="9.5" fill="#173039"/>
+  <text x="853" y="31" font-size="12" fill="#84BACB" text-anchor="middle">Parsing</text>
+  <rect x="1058" y="15" width="124" height="24" rx="12" fill="none" stroke="#26312e"/>
+  <rect x="1061" y="18" width="58" height="18" rx="9" fill="#182629"/>
+  <text x="1090" y="30" font-family="ui-monospace, monospace" font-size="10" fill="#F1F4F4" text-anchor="middle">FULL</text>
+  <text x="1150" y="30" font-family="ui-monospace, monospace" font-size="10" fill="#57676E" text-anchor="middle">COMPACT</text>
+
+  <!-- column labels -->
+  <text x="24" y="88" font-family="ui-monospace, monospace" font-size="10" letter-spacing="1.4" fill="#57676E">PREVIOUS</text>
+  <text x="304" y="88" font-family="ui-monospace, monospace" font-size="10" letter-spacing="1.4" fill="#57676E">DOCUMENT</text>
+  <text x="840" y="88" font-family="ui-monospace, monospace" font-size="10" letter-spacing="1.4" fill="#57676E">LINKS NEAR FOCUS</text>
+
+  <!-- previous column (dim ghost) -->
+  <g opacity="0.55">
+    <rect x="16" y="100" width="264" height="508" rx="12" fill="#0E1518" stroke="#1b2426"/>
+    <rect x="36" y="150" width="150" height="12" rx="4" fill="#2a3134"/>
+    <rect x="36" y="176" width="224" height="7" rx="3.5" fill="#20282a"/>
+    <rect x="36" y="190" width="210" height="7" rx="3.5" fill="#20282a"/>
+    <rect x="36" y="204" width="180" height="7" rx="3.5" fill="#20282a"/>
+    <rect x="28" y="330" width="240" height="30" rx="8" fill="#0b1113" stroke="#1b2426"/>
+    <text x="40" y="349" font-size="11" fill="#8A9099">How a compiler works · ← back</text>
+  </g>
+
+  <!-- centre document -->
+  <rect x="296" y="100" width="520" height="508" rx="12" fill="#101A1C" stroke="#1b2426"/>
+  <line x1="296" y1="354" x2="816" y2="354" stroke="#2f6274" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="308" y="349" font-family="ui-monospace, monospace" font-size="9" fill="#4f95ae" letter-spacing="1.2">FOCUS</text>
+
+  <rect x="322" y="150" width="150" height="13" rx="4" fill="#c9d3d5" opacity="0.85"/>
+  <g fill="#c3ccce" opacity="0.7">
+    <rect x="322" y="184" width="460" height="8" rx="4"/>
+    <rect x="322" y="200" width="430" height="8" rx="4"/>
+    <rect x="322" y="216" width="300" height="8" rx="4"/>
+  </g>
+
+  <rect x="316" y="330" width="486" height="48" rx="4" fill="#16262b"/>
+  <rect x="316" y="330" width="3" height="48" fill="#4795AE"/>
+  <text x="330" y="362" font-size="21" font-weight="600" fill="#F1F4F4" letter-spacing="-0.3">Parsing</text>
+
+  <g font-size="12.5" fill="#c3ccce">
+    <text x="330" y="404">The parser takes tokens from the <tspan fill="#4795AE" font-weight="600">lexer</tspan> and builds an</text>
+    <text x="330" y="426"><tspan fill="#D1A987" font-weight="600">abstract syntax tree</tspan> from the <tspan fill="#3E73C9" font-weight="600">language grammar</tspan>. A</text>
+    <text x="330" y="448">mismatch is a syntax error; <tspan fill="#19A974" font-weight="600">the checks that follow</tspan> turn a</text>
+    <text x="330" y="470">flat stream into structure.</text>
+  </g>
+
+  <!-- link cards, centred on the focus line -->
+  <g>
+    <rect x="832" y="212" width="352" height="52" rx="10" fill="#0f181a" stroke="#1b2426"/>
+    <rect x="832" y="212" width="3" height="52" rx="1.5" fill="#4795AE"/>
+    <text x="848" y="234" font-size="13" font-weight="600" fill="#F1F4F4">Lexing</text>
+    <text x="848" y="252" font-size="11" fill="#8A9099">The lexer groups raw characters into tokens…</text>
+
+    <rect x="832" y="270" width="352" height="52" rx="10" fill="#0f181a" stroke="#1b2426"/>
+    <rect x="832" y="270" width="3" height="52" rx="1.5" fill="#D1A987"/>
+    <text x="848" y="292" font-size="13" font-weight="600" fill="#F1F4F4">The syntax tree</text>
+    <text x="848" y="310" font-size="11" fill="#8A9099">Your program as data — every stage walks it…</text>
+
+    <rect x="832" y="328" width="352" height="52" rx="10" fill="#0f181a" stroke="#243634"/>
+    <rect x="832" y="328" width="3" height="52" rx="1.5" fill="#3E73C9"/>
+    <text x="848" y="350" font-size="13" font-weight="600" fill="#F1F4F4">Language grammar</text>
+    <text x="848" y="368" font-size="11" fill="#8A9099">The rules a valid program must follow…</text>
+
+    <rect x="832" y="386" width="352" height="52" rx="10" fill="#0f181a" stroke="#1b2426"/>
+    <rect x="832" y="386" width="3" height="52" rx="1.5" fill="#19A974"/>
+    <text x="848" y="408" font-size="13" font-weight="600" fill="#F1F4F4">Semantic analysis</text>
+    <text x="848" y="426" font-size="11" fill="#8A9099">Checks what a grammar cannot — names, types…</text>
+
+    <rect x="832" y="444" width="352" height="52" rx="10" fill="#0f181a" stroke="#1b2426"/>
+    <rect x="832" y="444" width="3" height="52" rx="1.5" fill="#4795AE"/>
+    <text x="848" y="466" font-size="13" font-weight="600" fill="#F1F4F4">The introduction</text>
+    <text x="848" y="484" font-size="11" fill="#8A9099">A compiler turns source into a program…</text>
+  </g>
+
+  <!-- leader lines: source (centre right edge) → card -->
+  <g fill="none" stroke-width="1.6">
+    <path d="M 816 399 C 824 399, 824 238, 832 238" stroke="#4795AE"/>
+    <path d="M 816 420 C 824 420, 824 296, 832 296" stroke="#D1A987"/>
+    <path d="M 816 421 C 824 421, 824 354, 832 354" stroke="#3E73C9"/>
+    <path d="M 816 443 C 824 443, 824 412, 832 412" stroke="#19A974"/>
+    <path d="M 816 200 C 824 200, 824 470, 832 470" stroke="#4795AE" opacity="0.6"/>
+  </g>
+  <g>
+    <circle cx="816" cy="399" r="3" fill="#4795AE"/>
+    <circle cx="816" cy="420" r="3" fill="#D1A987"/>
+    <circle cx="816" cy="421" r="3" fill="#3E73C9"/>
+    <circle cx="816" cy="443" r="3" fill="#19A974"/>
+    <circle cx="816" cy="200" r="3" fill="#4795AE" opacity="0.6"/>
+  </g>
+</svg>
