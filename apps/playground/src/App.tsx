@@ -4,7 +4,8 @@ import * as React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import wasmUrl from "@lmd/core/pkg/lmd_wasm_bg.wasm?url";
 import { DEMO } from "./demo.js";
-import { EditorShell } from "./EditorShell.js";
+import { EditorShell } from "@lmd/editor-shell";
+import "@lmd/editor-shell/editor-shell.css";
 import { Logo } from "./Logo.js";
 import { workspace, type WsDoc } from "./workspace.js";
 
@@ -705,6 +706,7 @@ export function App() {
 
       {editing ? (
         <EditorShell
+          workspace={workspace}
           initial={body}
           anchors={sections.map((s) => ({ slug: s.slug, title: s.title }))}
           imports={IMPORTS}

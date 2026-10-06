@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface AnchorOption {
   slug: string;
@@ -122,14 +122,27 @@ export function SectionEditor({
   crossAnchors = [],
   onSave,
   onCancel,
+  onChange: onDraftChange,
+  hideActions = false,
 }: {
   initial: string;
   anchors: AnchorOption[];
   crossAnchors?: CrossAnchor[];
   onSave: (md: string) => void;
   onCancel: () => void;
+  /** Called with the current text whenever it differs from the last reported one. */
+  onChange?: (body: string) => void;
+  /** Do not render the Save/Cancel buttons (the host owns saving). */
+  hideActions?: boolean;
 }) {
   const [draft, setDraft] = useState(initial);
+  // Report edits upward; the initial text is the baseline, so mount is silent.
+  const reported = useRef(initial);
+  useEffect(() => {
+    if (draft === reported.current) return;
+    reported.current = draft;
+    onDraftChange?.(draft);
+  }, [draft, onDraftChange]);
   const [composer, setComposer] = useState<{ at: number } | null>(null);
   const [query, setQuery] = useState("");
   const [picks, setPicks] = useState<Pick[]>([]);
@@ -302,12 +315,16 @@ export function SectionEditor({
           type <kbd>@</kbd> to link
         </span>
         <span className="editor__spacer" />
-        <button className="btn btn--ghost" onClick={onCancel}>
-          Cancel
-        </button>
-        <button className="btn btn--primary" onClick={() => onSave(draft)}>
-          Save
-        </button>
+        {!hideActions && (
+          <>
+            <button className="btn btn--ghost" onClick={onCancel}>
+              Cancel
+            </button>
+            <button className="btn btn--primary" onClick={() => onSave(draft)}>
+              Save
+            </button>
+          </>
+        )}
       </div>
 
       <div className="editor__area">

@@ -1,9 +1,9 @@
 import * as core from "@lmd/core";
 import * as React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ModalViewer } from "./ModalViewer.js";
 import { SectionEditor, type AnchorOption, type CrossAnchor } from "./SectionEditor.js";
-import { workspace, type Resolution, type WsAnchor, type WsDoc } from "./workspace.js";
+import type { Resolution, Workspace, WsAnchor, WsDoc } from "./workspace.js";
 
 interface Imp {
   alias: string;
@@ -12,7 +12,7 @@ interface Imp {
 }
 
 /** Slugify a title into a fresh, unique import alias. */
-function aliasFrom(title: string, taken: Set<string>): string {
+export function aliasFrom(title: string, taken: Set<string>): string {
   const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "doc";
   let a = base;
   let n = 2;
@@ -20,21 +20,36 @@ function aliasFrom(title: string, taken: Set<string>): string {
   return a;
 }
 
-export function EditorShell({
-  initial,
-  anchors,
-  imports,
-  compact = false,
-  onSave,
-  onCancel,
-}: {
+export interface EditorShellProps {
+  /** The workspace used to resolve imports; supplied by the host application. */
+  workspace: Workspace;
   initial: string;
   anchors: AnchorOption[];
   imports: Record<string, core.Import>;
   compact?: boolean;
   onSave: (md: string) => void;
   onCancel: () => void;
-}) {
+  /** Called with the current body each time it changes while editing. */
+  onChange?: (body: string) => void;
+  /** Called with the current import table when the sidebar changes it
+   * (Relink, Delete links / Keep, "+" add). Same shape as `imports`. */
+  onImportsChange?: (imports: Record<string, core.Import>) => void;
+  /** Do not render the built-in Save/Cancel buttons; the host saves itself. */
+  hideActions?: boolean;
+}
+
+export function EditorShell({
+  workspace,
+  initial,
+  anchors,
+  imports,
+  compact = false,
+  onSave,
+  onCancel,
+  onChange,
+  onImportsChange,
+  hideActions = false,
+}: EditorShellProps) {
   // The left wing collapses to a rail; in compact mode it starts collapsed.
   const [railOpen, setRailOpen] = useState(!compact);
   // Import paths are editable so "relink" can adopt a detected move.
@@ -57,11 +72,31 @@ export function EditorShell({
     return [...base, ...extra];
   }, [imports, paths, extra]);
 
+  // The import table as the sidebar currently has it: relinked paths applied,
+  // dropped aliases removed, added documents appended.
+  const current = useMemo<Record<string, core.Import>>(() => {
+    const out: Record<string, core.Import> = {};
+    for (const [alias, im] of Object.entries(imports)) {
+      if (dropped.has(alias)) continue;
+      out[alias] = { ...im, path: paths[alias] ?? im.path };
+    }
+    for (const e of extra) if (!dropped.has(e.alias)) out[e.alias] = { id: e.id, path: e.path };
+    return out;
+  }, [imports, paths, extra, dropped]);
+  // Only report real changes; the initial table is the baseline.
+  const reportedImports = useRef(JSON.stringify(current));
+  useEffect(() => {
+    const key = JSON.stringify(current);
+    if (key === reportedImports.current) return;
+    reportedImports.current = key;
+    onImportsChange?.(current);
+  }, [current, onImportsChange]);
+
   const resolved = useMemo<Map<string, Resolution>>(() => {
     const m = new Map<string, Resolution>();
     for (const im of imps) m.set(im.alias, workspace.resolve(im.id, im.path));
     return m;
-  }, [imps]);
+  }, [imps, workspace]);
 
   // Imported anchors offered to the editor's `ref ` autocomplete.
   const crossAnchors = useMemo<CrossAnchor[]>(() => {
@@ -132,6 +167,8 @@ export function EditorShell({
             crossAnchors={crossAnchors}
             onSave={onSave}
             onCancel={onCancel}
+            onChange={onChange}
+            hideActions={hideActions}
           />
         </main>
         {modal && <ModalViewer doc={modal.doc} slug={modal.slug} onClose={() => setModal(null)} />}
@@ -264,6 +301,8 @@ export function EditorShell({
           crossAnchors={crossAnchors}
           onSave={onSave}
           onCancel={onCancel}
+          onChange={onChange}
+          hideActions={hideActions}
         />
       </main>
 

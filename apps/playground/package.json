@@ -11,6 +11,7 @@
   "dependencies": {
     "@lmd/core": "workspace:*",
     "@lmd/editor": "workspace:*",
+    "@lmd/editor-shell": "workspace:*",
     "@lmd/viewer": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

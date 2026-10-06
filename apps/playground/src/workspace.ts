@@ -12,28 +12,13 @@
  *                              (move detection), or null if it's truly gone;
  *   - `addDoc(path)`         → register a picked/typed document.
  *
- * Everything is swappable: replace this module with one backed by a Node server
- * or `showDirectoryPicker()` and the UI does not change.
+ * This implements the `Workspace` contract from `@lmd/editor-shell`; replace it
+ * with one backed by a Node server or `showDirectoryPicker()` and the UI does not change.
  */
 
-export interface WsAnchor {
-  slug: string;
-  title: string;
-}
+import type { Resolution, Workspace, WsAnchor, WsDoc } from "@lmd/editor-shell";
 
-export interface WsDoc {
-  uuid: string;
-  title: string;
-  /** An lmd body (markdown + anchor comments), enough to render in the modal. */
-  body: string;
-  anchors: WsAnchor[];
-}
-
-/** How an import resolved against the workspace. */
-export type Resolution =
-  | { status: "found"; doc: WsDoc; path: string }
-  | { status: "moved"; doc: WsDoc; from: string; to: string }
-  | { status: "missing" };
+export type { Resolution, Workspace, WsAnchor, WsDoc };
 
 function anchorsOf(body: string): WsAnchor[] {
   const re = /^(#{1,6})\s*(.*?)\s*<!--lmd:a\s+([a-z][a-z0-9-]*)[^>]*-->/gm;
@@ -119,7 +104,7 @@ const DOCS = new Map<string, WsDoc>([
   [GLOSSARY.uuid, GLOSSARY],
 ]);
 
-export const workspace = {
+export const workspace: Workspace = {
   /** The doc currently stored at `path`, if any. */
   resolveByPath(path: string): WsDoc | null {
     const id = FS.get(path);
@@ -164,5 +149,3 @@ export const workspace = {
     return [...FS].map(([path, id]) => ({ path, title: DOCS.get(id)?.title ?? path }));
   },
 };
-
-export type Workspace = typeof workspace;
