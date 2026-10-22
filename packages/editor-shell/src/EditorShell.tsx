@@ -1,6 +1,15 @@
 import * as core from "@lmd/core";
 import * as React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  createHistory,
+  parseHistory,
+  recordEdit,
+  redo,
+  undo,
+  type EditHistory,
+  type HistorySnapshot,
+} from "./history.js";
 import { ModalViewer } from "./ModalViewer.js";
 import { SectionEditor, type AnchorOption, type CrossAnchor } from "./SectionEditor.js";
 import type { Resolution, Workspace, WsAnchor, WsDoc } from "./workspace.js";
@@ -36,6 +45,110 @@ export interface EditorShellProps {
   onImportsChange?: (imports: Record<string, core.Import>) => void;
   /** Do not render the built-in Save/Cancel buttons; the host saves itself. */
   hideActions?: boolean;
+  /** Undo/redo history to start from (read once, at mount). Pass back what
+   * `onHistoryChange` last reported to keep Ctrl+Z working across a remount. */
+  history?: EditHistory;
+  /** Called with the new history each time it changes (edit, undo, redo). The
+   * value is plain JSON-safe data that the host may keep and hand back later. */
+  onHistoryChange?: (history: EditHistory) => void;
+}
+
+type HistoryDirection = "undo" | "redo";
+
+interface BodyHistoryCallbacks {
+  onChange?: (body: string) => void;
+  onHistoryChange?: (history: EditHistory) => void;
+}
+
+/** Put `text` into a React-controlled textarea and let React see it as an input. */
+function writeTextarea(ta: HTMLTextAreaElement, snap: HistorySnapshot): void {
+  if (ta.value !== snap.text) {
+    // The prototype setter bypasses React's value tracker, so the input event is not swallowed.
+    const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(ta) as object, "value")?.set;
+    if (setter) setter.call(ta, snap.text);
+    else ta.value = snap.text;
+    // A caret at 0 keeps the editor's "just typed `@`" detection from misreading this as typing.
+    ta.setSelectionRange(0, 0);
+    const EventCtor = ta.ownerDocument.defaultView?.Event ?? Event;
+    ta.dispatchEvent(new EventCtor("input", { bubbles: true }));
+  }
+  ta.setSelectionRange(snap.start, snap.end);
+}
+
+function snapshotOf(ta: HTMLTextAreaElement): HistorySnapshot {
+  return { text: ta.value, start: ta.selectionStart ?? ta.value.length, end: ta.selectionEnd ?? ta.value.length };
+}
+
+/**
+ * Body undo/redo for the editor textarea, kept in our own history instead of the
+ * browser's (which dies with the textarea). The textarea itself belongs to
+ * SectionEditor, so this works from the outside: it listens on the wrapping
+ * element and writes restored text back through a real `input` event.
+ */
+function createBodyHistory(initial: string, start: EditHistory | undefined, callbacks: () => BodyHistoryCallbacks) {
+  let state: EditHistory = (start && parseHistory(start)) || createHistory(initial);
+  let composing = false;
+  let main: HTMLElement | null = null;
+
+  const findTextarea = (): HTMLTextAreaElement | null => main?.querySelector("textarea") ?? null;
+  const commit = (next: EditHistory) => {
+    state = next;
+    callbacks().onHistoryChange?.(next);
+  };
+  const record = (ta: HTMLTextAreaElement, opts: { newUnit?: boolean; closeGroup?: boolean } = {}) => {
+    const next = recordEdit(state, snapshotOf(ta), Date.now(), opts);
+    if (next !== state) commit(next);
+  };
+  const step = (direction: HistoryDirection) => {
+    const ta = findTextarea();
+    if (!ta || composing) return;
+    // The text may have changed without us seeing it (e.g. the editor was remounted): catch up first.
+    record(ta, { newUnit: true, closeGroup: true });
+    const next = direction === "undo" ? undo(state) : redo(state);
+    if (!next) return;
+    commit(next);
+    writeTextarea(ta, next.present);
+  };
+  const onBeforeInput = (e: Event) => {
+    const type = (e as Event & { inputType?: string }).inputType;
+    if (e.target !== findTextarea() || (type !== "historyUndo" && type !== "historyRedo")) return;
+    e.preventDefault();
+    step(type === "historyUndo" ? "undo" : "redo");
+  };
+
+  return {
+    /** Callback ref for the element wrapping the editor. */
+    attach(el: HTMLElement | null) {
+      main?.removeEventListener("beforeinput", onBeforeInput);
+      main = el;
+      main?.addEventListener("beforeinput", onBeforeInput);
+    },
+    /** Wired to SectionEditor's `onChange`; also forwards to the host's. */
+    onBodyChange(body: string) {
+      callbacks().onChange?.(body);
+      const ta = findTextarea();
+      if (ta && !composing && ta.value === body) record(ta);
+    },
+    onKeyDown(e: React.KeyboardEvent) {
+      if (e.target !== findTextarea() || composing || e.nativeEvent.isComposing) return;
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const k = e.key.toLowerCase();
+      const direction: HistoryDirection | null = k === "z" ? (e.shiftKey ? "redo" : "undo") : k === "y" && !e.shiftKey ? "redo" : null;
+      if (!direction) return;
+      e.preventDefault();
+      step(direction);
+    },
+    onCompositionStart(e: React.CompositionEvent) {
+      if (e.target === findTextarea()) composing = true;
+    },
+    onCompositionEnd(e: React.CompositionEvent) {
+      const ta = findTextarea();
+      if (e.target !== ta || !ta) return;
+      composing = false;
+      // The finished composition is one undo unit, and typing after it starts another.
+      record(ta, { newUnit: true, closeGroup: true });
+    },
+  };
 }
 
 export function EditorShell({
@@ -49,7 +162,19 @@ export function EditorShell({
   onChange,
   onImportsChange,
   hideActions = false,
+  history,
+  onHistoryChange,
 }: EditorShellProps) {
+  // Read at event time, and set during render so the child editor's effects see the newest host callbacks.
+  const latest = useRef<BodyHistoryCallbacks>({ onChange, onHistoryChange });
+  latest.current = { onChange, onHistoryChange };
+  const [bodyHistory] = useState(() => createBodyHistory(initial, history, () => latest.current));
+  const mainProps = {
+    ref: bodyHistory.attach,
+    onKeyDown: bodyHistory.onKeyDown,
+    onCompositionStart: bodyHistory.onCompositionStart,
+    onCompositionEnd: bodyHistory.onCompositionEnd,
+  };
   // The left wing collapses to a rail; in compact mode it starts collapsed.
   const [railOpen, setRailOpen] = useState(!compact);
   // Import paths are editable so "relink" can adopt a detected move.
@@ -160,14 +285,14 @@ export function EditorShell({
             ›
           </button>
         </aside>
-        <main className="emain">
+        <main className="emain" {...mainProps}>
           <SectionEditor
             initial={initial}
             anchors={anchors}
             crossAnchors={crossAnchors}
             onSave={onSave}
             onCancel={onCancel}
-            onChange={onChange}
+            onChange={bodyHistory.onBodyChange}
             hideActions={hideActions}
           />
         </main>
@@ -294,14 +419,14 @@ export function EditorShell({
         </aside>
       )}
 
-      <main className="emain">
+      <main className="emain" {...mainProps}>
         <SectionEditor
           initial={initial}
           anchors={anchors}
           crossAnchors={crossAnchors}
           onSave={onSave}
           onCancel={onCancel}
-          onChange={onChange}
+          onChange={bodyHistory.onBodyChange}
           hideActions={hideActions}
         />
       </main>
